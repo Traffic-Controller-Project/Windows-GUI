@@ -1,0 +1,83 @@
+{
+    "Summary (View Only)":{
+        "Master Current State":{
+            "name": "master",
+            "treeView":true,
+            "read":true,
+            "columns":["State Variable","Value"],
+            "rows":[
+                ["Top Level State", "Anticlockwise"],
+                ["Lower State", "North Green"],
+                ["Time Allotted (s)",16],
+                ["Time Left(s)",10]
+            ],
+            "icons":false
+        },
+        "SlavesCurrentState":{
+            "name": "slave",
+            "treeView":true,
+            "read":true,
+            "columns":["Slave","Current Signal","Time allotted (s)","Time elapsed (s)","Status"],
+            "rows":[
+                [{"0":null},{"Green Left":"icons/icon_greenLeft.png"},{"10":null},{"2":null},{"Healthy":"icons/icon_green.png"}],
+                [{"1":null},{"Green Left":"icons/icon_greenRight.png"},{"12":null},{"10":null},{"Healthy":"icons/icon_green.png"}],
+                [{"2":null},{"Green Left":"icons/icon_greenLeft.png"},{"11":null},{"4":null},{"Unealthy":"icons/icon_red.png"}],
+                [{"3":null},{"Green Left":"icons/icon_greenForward.png"},{"15":null},{"14":null},{"Healthy":"icons/icon_green.png"}],
+                [{"4":null},{"Green Left":"icons/icon_red.png"},{"15":null},{"12":null},{"Unhealthy":"icons/icon_red.png"}],
+                [{"5":null},{"Green Left":"icons/icon_amber.png"},{"14":null},{"4":null},{"Healthy":"icons/icon_green.png"}]
+            ],
+            "icons":true
+        },
+        "button":{
+            "present": true,
+            "text": "Connect to MQTT Server",
+            "callback": "connectToMQTT"
+        }
+    },
+    "Master":{
+        "Set Master State":{
+            "treeView":false,
+            "read":false,
+            "fields":{
+                "n":{
+                    "labelName": "Number of Slaves",
+                    "checkbox": false,
+                    "Text":true,
+                    "replica": true,
+                    "replicaText": "Time for slave ",
+                    "labelTextNames": "t",
+                    "buttonText": "Show slaves",
+                    "buttonCallBack": "showSlaves"
+                },
+                "mode":{
+                    "labelName": "Mode",
+                    "checkbox": false,
+                    "Text":false,
+                    "replica": false,
+                    "Options":{
+                        "Multidirectional": "0",
+                        "Straight only": "1"
+                    },
+                    "button": false
+                },
+                "pedestrian":{
+                    "labelName": "Pedestrian",
+                    "checkbox": true,
+                    "Text":false,
+                    "replica": false,
+                    "checkBoxText": "On/Off",
+                    "Options":{
+                        "On": "0",
+                        "Off": "1"
+                    },
+                    "button": false
+                }
+            }
+        },
+        "button":{
+            "present": true,
+            "text": "Deploy",
+            "callback": "deployToBroker"
+        }
+    }
+}
