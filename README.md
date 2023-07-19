@@ -8,4 +8,4 @@ This repo contains the files for running the GUI App for Traffic Controller.
 2. Execute "pip install -r requirements.txt".
 
 # MQTT Remote Hosted
-> Remote MQTT Broker Link -> [traffic-controller.cloud.shiftr.io](https://traffic-controller.cloud.shiftr.io/)https://traffic-controller.cloud.shiftr.io/
+> Remote MQTT Broker Link -> [traffic-controller.cloud.shiftr.io](https://traffic-controller.cloud.shiftr.io/)
