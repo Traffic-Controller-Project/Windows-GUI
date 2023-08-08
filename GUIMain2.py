@@ -121,7 +121,7 @@ class Ui_MainWindow(object):
         labelSlavesNum = QLabel("Number of Slaves")
         lineEditSlavesNum = QLineEdit()
         lineEditSlavesNum.setMaximumSize(100,20)
-        pushButtonSlavesNum = QPushButton("Show Slaves")
+        pushButtonSlavesNum = QPushButton("Set Slaves")
         pushButtonSlavesNum.clicked.connect(lambda checked,lineEdit=lineEditSlavesNum: self.show_slaves(lineEdit))
         hLayoutSlavesNum.addWidget(lineEditSlavesNum)
         hLayoutSlavesNum.addWidget(pushButtonSlavesNum)
@@ -287,6 +287,11 @@ class Ui_MainWindow(object):
         formLayoutSlaveEnable.setHorizontalSpacing(100)
         widgetSlaveEnableKey.setLayout(formLayoutSlaveEnable)
 
+        for i in range(7):
+            labelSlaveEnable = QLabel("Slave "+str(i+1))
+            labelSlaveEnableField = QCheckBox("On/Off")
+            formLayoutSlaveEnable.addRow(labelSlaveEnable,labelSlaveEnableField)
+
         options = ["Multidirectional","Straight-Only","Blinker"]
 
         for option in options:
@@ -354,7 +359,7 @@ class Ui_MainWindow(object):
     def update_button_text(self,option,button, formLayoutParams,formLayoutSlaveEnable):
         button.setText(option)
         self.remove_all_widgets(formLayoutParams)
-        self.remove_all_widgets(formLayoutSlaveEnable)
+        
         if(option == "Multidirectional"):
             for i in range(self.n_slaves):
                 labelGreen = QLabel("Green "+str(i+1))
@@ -376,10 +381,13 @@ class Ui_MainWindow(object):
             labelFreqField = QLineEdit()
             formLayoutParams.addRow(labelFreq,labelFreqField)
 
+        for i in range(7):
+            itm = formLayoutSlaveEnable.itemAt(i,QFormLayout.ItemRole.FieldRole).widget()
+            print(itm.text())
+            itm.setChecked(False)
         for i in range(self.n_slaves):
-            labelSlaveEnable = QLabel("Slave "+str(i+1))
-            labelSlaveEnableField = QLineEdit()
-            formLayoutSlaveEnable.addRow(labelSlaveEnable,labelSlaveEnableField)
+            itm = formLayoutSlaveEnable.itemAt(i,QFormLayout.ItemRole.FieldRole).widget()
+            itm.setChecked(True)
 
     def remove_all_widgets(self,layout):
         if layout is not None:
