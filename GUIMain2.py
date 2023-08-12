@@ -60,7 +60,6 @@ class Ui_MainWindow(object):
         self.tabSummary.setObjectName("tabSummary")
         tabWidget.addTab(self.tabSummary, "Summary (View Only)")
 
-
     def createSetMasterTab(self,tabWidget):
         self.tabSetMaster = QtWidgets.QWidget()
         self.tabSetMaster.setObjectName("tabSetMaster")
@@ -107,7 +106,6 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.gridLayoutGroupBoxSetMaster.addWidget(self.scrollArea, 1, 0, 1, 1)
         self.gridLayoutSetMaster.addWidget(self.groupBoxSetMaster, 0, 0, 1, 1)
-
 
         tabWidget.addTab(self.tabSetMaster, "Set Master State")
 
@@ -253,6 +251,7 @@ class Ui_MainWindow(object):
         pushButtonMode.setMenu(menuMode)
         pushButtonMode.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding,)
         formLayoutSlotEach.addRow(labelMode,pushButtonMode)
+
         labelParams = QLabel("Parameters:")
         widgetParams = QWidget()
         formLayoutSlotEach.addRow(labelParams,widgetParams)
@@ -403,119 +402,82 @@ class Ui_MainWindow(object):
 
     def scrapeMasterTab(self):
         self.dictScrapedTab = {}
-        print()
-        self.scrapeRecursively(self.vLayoutGroupBoxMaster)
+        # print("Vertical Layout Count: ",self.vLayoutGroupBoxMaster.count())
+        # self.scrapeRecursively(self.vLayoutGroupBoxMaster,self.dictScrapedTab)
+        # Scraping through 7 days
+        if(self.n_slaves == 0):
+            windowTitle = "Invalid Data!"
+            popupText = "Slaves not set!"
+            self.callPopup(windowTitle,popupText)
+            self.dictScrapedTab = {}
+            return
+        for i in range(1,8):    
+            itemGroupBox = self.vLayoutGroupBoxMaster.itemAt(i).widget()
+            self.dictScrapedTab[itemGroupBox.title()]={}
+            self.scrapeGroupBox(itemGroupBox,i,self.dictScrapedTab[itemGroupBox.title()])
+            # print('Type of Scroll Area vboxlayout second item: ',itemGroupBox.layout().itemAt(0).widget().widget().layout().itemAt(1))
         print(self.dictScrapedTab)
+        print()
 
-    def scrapeRecursively(self,itemScraped):
-        if(type(itemScraped) == QVBoxLayout):
-            self.scrapeVBoxLayoutItems(itemScraped)
-        elif(type(itemScraped) == QHBoxLayout):
-            self.scrapeHBoxLayoutItems(itemScraped)
-        elif(type(itemScraped) == QFormLayout):
-            self.scrapeHBoxLayoutItems(itemScraped)
+    def scrapeGroupBox(self,groupBox,dayNumber,dictScrape):
 
-    def scrapeVBoxLayoutItems(self,itemScraped):
-        for i in range(itemScraped.count()):
-            item = itemScraped.itemAt(i)
-            if(type(item) == QWidgetItem):
-                self.scrapeWidgetItems(item)
-            elif(type(item) == QWidget):
-                self.scrapeWidget(item)
-            elif(type(item) == QFormLayout):
-                self.scrapeFormLayoutItems(item)
-            elif(type(item) == QVBoxLayout):
-                self.scrapeVBoxLayoutItems(item)
-            elif(type(item) == QHBoxLayout):
-                self.scrapeHBoxLayoutItems(item)
+        # groupBox.layout().itemAt(0).widget().widget().layout().itemAt(1) -> Gives VBoxLayout for each slot
+        # groupBox.layout().itemAt(0).widget().widget().layout().itemAt(0) -> Gives FormLayout for "Slots"
 
-    def scrapeHBoxLayoutItems(self,itemScraped):
-        for i in range(itemScraped.count()):
-            item = itemScraped.itemAt(i)
-            if(type(item) == QWidgetItem):
-                # self.scrapeWidgetItems(item)
-                itemLayout = item.layout()
-                itemWidget = item.widget()
-                if(itemLayout):
-                    if(type(itemLayout)==QFormLayout):
-                        self.scrapeFormLayoutItems(itemLayout)
-                    elif(type(itemLayout)==QVBoxLayout):
-                        self.scrapeVBoxLayoutItems(itemLayout)
-                    elif(type(itemLayout)==QHBoxLayout):
-                        self.scrapeHBoxLayoutItems(itemLayout)
-                if(itemWidget):
-                    if(hasattr(itemWidget,"text")):
-                        self.dictScrapedTab[itemWidget.text()]="New"
-                    else:
-                        print(itemWidget)
-            elif(type(item) == QFormLayout):
-                self.scrapeFormLayoutItems(item)
-            elif(type(item) == QVBoxLayout):
-                self.scrapeVBoxLayoutItems(item)
-            elif(type(item) == QHBoxLayout):
-                self.scrapeHBoxLayoutItems(item)
-    
-    def scrapeFormLayoutItems(self,item):
-        for i in range(item.count()):
-            itemLabel = item.itemAt(i,QFormLayout.ItemRole.LabelRole)
-            itemField = item.itemAt(i,QFormLayout.ItemRole.FieldRole)
-            if(itemLabel and itemField):
-                label = self.scrapeWidgetItems(itemLabel)
-                field = self.scrapeWidgetItems(itemField)
-                self.dictScrapedTab[label]=field
-            elif(itemLabel):
-                label = self.scrapeWidgetItems(itemLabel)
-                self.dictScrapedTab[label]="New"
-            elif(itemField):
-                field = self.scrapeWidgetItems(itemField)
-                self.dictScrapedTab[field]="New"
+        noOfSlots = groupBox.layout().itemAt(0).widget().widget().layout().itemAt(1).count()
+        vBoxLayoutSlots = groupBox.layout().itemAt(0).widget().widget().layout().itemAt(1)
+        for i in range(noOfSlots):
+            slotNumber = vBoxLayoutSlots.itemAt(i).itemAt(0).widget().text()
+            print("Slot Number: ",slotNumber)
+            dictScrape[slotNumber]={}
+            self.scrapeEachTimeSlot(vBoxLayoutSlots.itemAt(i),dictScrape[slotNumber])
+            dictScrape[slotNumber]["env"]={}
+            self.scrapeRestItems(vBoxLayoutSlots.itemAt(i),dayNumber,slotNumber,dictScrape[slotNumber]["env"])
+        print()
 
-    def scrapeWidgetItems(self,item):
-        widget = item.widget()
-        layout = item.layout()
-        if(type(layout)==QFormLayout):
-            self.scrapeFormLayoutItems(layout)
-        elif(type(layout)==QVBoxLayout):
-            self.scrapeVBoxLayoutItems(layout)
-        elif(type(layout)==QHBoxLayout):
-            self.scrapeHBoxLayoutItems(layout)
+    def scrapeRestItems(self,formLayout,dayNumber,slotNumber,dictScrape):
+        #Mode item
+        label = formLayout.itemAt(3,QFormLayout.ItemRole.LabelRole).widget().text()
+        field = formLayout.itemAt(3,QFormLayout.ItemRole.FieldRole).widget().text()
 
-        if(widget):
-            if(type(widget)==QScrollArea):
-                self.scrapeScrollArea(widget)
-            else:
-                if(hasattr(widget,"text")):
-                    return widget.text()
-                layout = widget.layout()
-                if(type(layout)==QFormLayout):
-                    self.scrapeFormLayoutItems(layout)
-                elif(type(layout)==QVBoxLayout):
-                    self.scrapeVBoxLayoutItems(layout)
-                elif(type(layout)==QHBoxLayout):
-                    self.scrapeHBoxLayoutItems(layout)
-        return ""
-    
-    def scrapeScrollArea(self,item):
-        layout = item.widget().layout()
-        if(type(layout)==QVBoxLayout):
-            self.scrapeVBoxLayoutItems(layout)
-        elif(type(layout)==QHBoxLayout):
-            self.scrapeHBoxLayoutItems(layout)
-        if(type(layout)==QFormLayout):
-            self.scrapeFormLayoutItems(layout)
-    
-    def scrapeWidget(self,item):
-        widget = item.widget()
-        if(hasattr(widget,"text")):
-            self.dictScrapedTab[widget.text()]="New"
-        layout = widget.layout()
-        if(type(layout)==QFormLayout):
-            self.scrapeFormLayoutItems(layout)
-        elif(type(layout)==QVBoxLayout):
-            self.scrapeVBoxLayoutItems(layout)
-        elif(type(layout)==QHBoxLayout):
-            self.scrapeHBoxLayoutItems(layout)
+        # if(field == "Select an option"):
+        #     windowTitle = "Invalid Data!"
+        #     popupText = "Mode not set for "+slotNumber+" of "+self.listDays[dayNumber-1]+"!"
+        #     self.callPopup(windowTitle,popupText)
+        #     self.dictScrapedTab = {}
+        #     return
 
+        dictScrape["n"]=self.n_slaves
+        dictScrape[label]=field
+        # self.scrapeParams
+
+    def scrapeEachTimeSlot(self,formLayout,dictScrape):
+        label = formLayout.itemAt(1,QFormLayout.ItemRole.LabelRole)
+        field = formLayout.itemAt(1,QFormLayout.ItemRole.FieldRole)
+        self.scrapeTimeOfSlot(label.widget(),field.widget(),dictScrape)
+
+        label = formLayout.itemAt(2,QFormLayout.ItemRole.LabelRole)
+        field = formLayout.itemAt(2,QFormLayout.ItemRole.FieldRole)
+        self.scrapeTimeOfSlot(label.widget(),field.widget(),dictScrape)
+
+    def scrapeTimeOfSlot(self,label,field,dictScrape):
+        # print(label.text())
+        dictScrape[label.text()]={}
+        for i in range(0,field.layout().count(),2):
+            itemText = field.layout().itemAt(i).widget().text()
+            itemLabel = field.layout().itemAt(i+1).widget().text()
+            dictScrape[label.text()][itemLabel]=itemText
+
+    def callPopup(self,windowTitle,popupText):
+        popup = QMessageBox()
+        popup.setWindowTitle(windowTitle)
+        popup.setText(popupText)
+        popup.setIcon(QMessageBox.Icon.Information)
+        popup.addButton(QMessageBox.StandardButton.Ok)
+        popup.addButton(QMessageBox.StandardButton.Cancel)
+
+        popup.exec()
+        return
 
     def deployToBroker(self):
         self.scrapeMasterTab()
@@ -532,3 +494,4 @@ if __name__ == "__main__":
     ui.setupUi(MainWindow)
     MainWindow.show()
     sys.exit(app.exec())
+
