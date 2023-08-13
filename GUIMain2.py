@@ -11,7 +11,18 @@ from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 
+import paho.mqtt.client as mqtt
+from MQTTBroker import client,broker,port,topics,data
+
 import json
+
+treeModelsList = {}
+dictSignalState = {"0":"Red","1":"Amber","2":"Green Left","3":"Green Forward","4":"Green Right"}
+dictSignalIcon = {"Red":"icons/icon_red.png","Amber":"icons/icon_amber.png","Green Left":"icons/icon_greenLeft.png","Green Forward":"icons/icon_greenForward.png","Green Right":"icons/icon_greenRight.png"}
+dictHigherState = {"0": "Multidirectional", "1": "Straight only"}
+dictLowerState0 = {"0": "All Red, Pedestrian Green only", "1": "North Green","2": "West Green", "3": "South Green", "4": "East Green"}
+dictLowerState1 = {"0": "All Red, Pedestrian Green only", "1": "North-South Green","2": "West-East Green"}
+dictMasterKeys = {"n_states":'Higher State',"master_state":"Lower State","timers":"Timers for the slaves"}
 
 def is_convertible_to_int(string):
     try:
@@ -27,6 +38,23 @@ class Ui_MainWindow(object):
         self.received_message_slave = None
         self.received_message_master = None
 
+    def on_message(self,client, userdata, msg):
+        payload = msg.payload.decode("utf-8")
+        try:
+            # Try parsing the payload as JSON
+            data = json.loads(payload)
+            if(msg.topic == topics[0]):
+                self.received_message_slave = data
+                self.updateModel(treeModelsList["slave"],self.received_message_slave,"slave")
+            elif(msg.topic == topics[1]):
+                self.received_message_master = data
+                self.updateModel(treeModelsList["master"],self.received_message_master,"master")
+            print(f'Received JSON message: {data}')
+        except json.JSONDecodeError:
+            print(f'Received non-JSON message: {payload}')
+        print(self.received_message_slave)
+        print(self.received_message_master)
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1046, 681)
@@ -37,6 +65,12 @@ class Ui_MainWindow(object):
         self.tabWidget = QtWidgets.QTabWidget(parent=self.centralwidget)
         self.tabWidget.setObjectName("tabWidget")
 
+        self.statusbar = QtWidgets.QStatusBar(parent=MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        self.statusLabel = QLabel()
+        self.statusbar.addWidget(self.statusLabel)
+        MainWindow.setStatusBar(self.statusbar)
+
         self.createTabs(self.tabWidget)
 
         self.gridLayout.addWidget(self.tabWidget, 0, 0, 1, 1)
@@ -45,9 +79,6 @@ class Ui_MainWindow(object):
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1046, 26))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(parent=MainWindow)
-        self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
         self.tabWidget.setCurrentIndex(1)
@@ -61,6 +92,102 @@ class Ui_MainWindow(object):
         self.tabSummary = QtWidgets.QWidget()
         self.tabSummary.setObjectName("tabSummary")
         tabWidget.addTab(self.tabSummary, "Summary (View Only)")
+
+        #Master State Summary
+        verticalLayout = QtWidgets.QVBoxLayout()
+        verticalLayout.setObjectName("verticalLayout")
+        groupBox = QtWidgets.QGroupBox("Master State Summary",self.tabSummary)
+        groupBox.setObjectName("Master State Summary")
+        verticalLayout.addWidget(groupBox)
+        self.gridLayout_2 = QtWidgets.QGridLayout(self.tabSummary)
+        self.gridLayout_2.setObjectName("gridLayout_2")
+        self.gridLayout_2.addLayout(verticalLayout, 0, 0)
+
+        treeModelMaster = QStandardItemModel()
+        treeViewMaster = QTreeView(groupBox)
+        treeViewMaster.setModel(treeModelMaster)
+        layout = QVBoxLayout()
+        layout.addWidget(treeViewMaster)
+        groupBox.setLayout(layout)
+        self.connectToMQTT()
+        columns = ["State Variable","Value"]
+        treeModelMaster.setHorizontalHeaderLabels(columns)
+        for i in range(len(columns)):
+            treeViewMaster.setColumnWidth(i,int(self.centralwidget.parent().width()/len(columns)))
+
+        treeModelsList["master"]=treeModelMaster
+
+        #Slave State Summary
+        groupBox = QtWidgets.QGroupBox("Slave State Summary",self.tabSummary)
+        groupBox.setObjectName("Slave State Summary")
+        verticalLayout.addWidget(groupBox)
+
+        treeModelSlave = QStandardItemModel()
+        treeViewSlave = QTreeView(groupBox)
+        treeViewSlave.setModel(treeModelSlave)
+        layout = QVBoxLayout()
+        layout.addWidget(treeViewSlave)
+        groupBox.setLayout(layout)
+        self.connectToMQTT()
+        columns = ["Slave","Current Signal","Time allotted (s)","Time elapsed (s)","Status"]
+        treeModelSlave.setHorizontalHeaderLabels(columns)
+        for i in range(len(columns)):
+            treeViewSlave.setColumnWidth(i,int(self.centralwidget.parent().width()/len(columns)))
+
+        treeModelsList["slave"]=treeModelSlave
+
+        pushButtonConnect = QPushButton()
+        pushButtonConnect.setText("Connect to MQTT Broker")
+        pushButtonConnect.clicked.connect(self.connectToMQTT)
+        verticalLayout.addWidget(pushButtonConnect)
+        verticalLayout.setAlignment(pushButtonConnect,Qt.AlignmentFlag.AlignHCenter)
+    
+    def updateModel(self,treeModel,msg,stringDevice):
+        if(stringDevice == "slave"):
+            itmList = []
+            print(self.received_message_master)
+            for item in list(msg.values()):
+                itm = None
+                if(isinstance(item,str) or isinstance(item,int)):
+                    itm = QStandardItem(str(item))
+                else:
+                    dictionary_string = json.dumps(item)
+                    dictionary_string = dictionary_string[1:len(dictionary_string)-1]
+                    itm = QStandardItem(dictionary_string)
+                itmList.append(itm)
+            
+            rowInd = int(itmList[0].text()) if is_convertible_to_int(itmList[0].text()) else treeModel.rowCount()
+            for colInd,item in enumerate(itmList):
+                print("Item text: ",item.text())
+                if(colInd == 1 and item.text() in list(dictSignalState.keys()) and dictSignalIcon[dictSignalState[item.text()]] is not None):
+                    iconPath = dictSignalIcon[dictSignalState[item.text()]]
+                    signalIcon = QtGui.QIcon()
+                    signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+                    item.setText(dictSignalState[item.text()])
+                    item.setIcon(signalIcon)
+                treeModel.setItem(rowInd,colInd,item)
+            statusIcon = QtGui.QIcon()
+            statusIcon.addPixmap(QtGui.QPixmap("icons/icon_green.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+            statusItem = QStandardItem("Healthy")
+            statusItem.setIcon(statusIcon)
+            treeModel.setItem(rowInd,4,statusItem)
+        else:
+            itmList = []
+            for rowInd,key in enumerate(list(msg.keys())):
+                itemState = QStandardItem(dictMasterKeys[key]) if key in dictMasterKeys else QStandardItem(key)
+                treeModel.setItem(rowInd,0,itemState)
+                value = msg[key]
+                if(isinstance(value,dict)):
+                    for ind,childKey in enumerate(value):
+                        childItemKey = QStandardItem(str(childKey))
+                        childItemValue = QStandardItem(str(value[childKey]))
+                        itemState.setChild(ind,0,childItemKey)
+                        itemState.setChild(ind,1,childItemValue)
+                # elif(key == "Number")
+                else:
+                    valueItem = QStandardItem(str(value))
+                    treeModel.setItem(rowInd,1,valueItem)            
+
 
     def createSetMasterTab(self,tabWidget):
         self.tabSetMaster = QtWidgets.QWidget()
@@ -552,14 +679,39 @@ class Ui_MainWindow(object):
         popup.exec()
         return
 
-    def reconfigureDict(self):
-        pass
-
     def deployToBroker(self):
         self.scrapeMasterTab()
-        self.reconfigureDict()
         JSONScrapedTab = json.dumps(self.dictScrapedTab)
         print("JSON: ",JSONScrapedTab)
+
+        if(client.is_connected() != True):
+            try:
+                rc = client.connect(broker,port,60)
+                if(rc != 0):
+                    self.statusLabel.setText("Could not connect!")
+            except BaseException:
+                self.statusLabel.setText("Could not connect!")
+                client.disconnect()
+        result = client.publish("/traffic/updates",JSONScrapedTab)
+        if(result.rc == mqtt.MQTT_ERR_SUCCESS):
+            self.statusLabel.setText("Deployed!")
+        else:
+            self.statusLabel.setText("Could not deploy!")
+    
+    def connectToMQTT(self):
+        self.statusLabel.setText("Connecting")
+        # Call a method to update the status bar message
+        if(client.is_connected() != True):
+            try:
+                rc = client.connect(broker,port,60)
+                if(rc != 0):
+                    self.statusLabel.setText("Could not connect!")
+                else:
+                    self.statusLabel.setText("Connected!")
+
+            except BaseException:
+                self.statusLabel.setText("Could not connect!")
+                client.disconnect()
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -572,5 +724,15 @@ if __name__ == "__main__":
     ui = Ui_MainWindow()
     ui.setupUi(MainWindow)
     MainWindow.show()
-    sys.exit(app.exec())
+    try:
+        client.connect(broker,port,60)
+        for topic in topics:
+            client.subscribe(topic)
+        client.on_message = ui.on_message
+    except KeyboardInterrupt:
+        print("Disconnecting...")
+        client.disconnect()
+    finally:
+        client.loop_start()
+        sys.exit(app.exec())
 
