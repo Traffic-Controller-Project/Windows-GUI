@@ -291,9 +291,9 @@ class Ui_MainWindow(object):
             labelSlaveEnableField = QCheckBox("On/Off")
             formLayoutSlaveEnable.addRow(labelSlaveEnable,labelSlaveEnableField)
 
-        options = ["Multidirectional","Straight-Only","Blinker"]
+        self.options = ["Multidirectional","Straight-Only","Blinker"]
 
-        for option in options:
+        for option in self.options:
             action = menuMode.addAction(option)
             action.triggered.connect(lambda checked, option=option, button=pushButtonMode, formLayoutParams = formLayoutParams: self.update_button_text(option, button, formLayoutParams,formLayoutSlaveEnable))
 
@@ -357,7 +357,7 @@ class Ui_MainWindow(object):
 
     def update_button_text(self,option,button, formLayoutParams,formLayoutSlaveEnable):
         button.setText(option)
-        self.remove_all_widgets(formLayoutParams)
+        self.remove_all_widgets_form(formLayoutParams)
         
         if(option == "Multidirectional"):
             for i in range(self.n_slaves):
@@ -388,6 +388,20 @@ class Ui_MainWindow(object):
             itm = formLayoutSlaveEnable.itemAt(i,QFormLayout.ItemRole.FieldRole).widget()
             itm.setChecked(True)
 
+    def remove_all_widgets_form(self,layout):
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                if widget:
+                    widget.deleteLater()
+                    del widget
+                layoutWithin = item.layout()
+                if(layoutWithin):
+                    self.remove_all_widgets(layoutWithin)
+                del layoutWithin
+                layout.removeRow(0)
+
     def remove_all_widgets(self,layout):
         if layout is not None:
             while layout.count():
@@ -395,6 +409,7 @@ class Ui_MainWindow(object):
                 widget = item.widget()
                 if widget:
                     widget.deleteLater()
+                    del widget
                 layoutWithin = item.layout()
                 if(layoutWithin):
                     self.remove_all_widgets(layoutWithin)
@@ -413,8 +428,9 @@ class Ui_MainWindow(object):
             return
         for i in range(1,8):    
             itemGroupBox = self.vLayoutGroupBoxMaster.itemAt(i).widget()
-            self.dictScrapedTab[itemGroupBox.title()]={}
-            self.scrapeGroupBox(itemGroupBox,i,self.dictScrapedTab[itemGroupBox.title()])
+            itemGroupBoxTitle = self.listDays.index(itemGroupBox.title())
+            self.dictScrapedTab[itemGroupBoxTitle]={}
+            self.scrapeGroupBox(itemGroupBox,i,self.dictScrapedTab[itemGroupBoxTitle])
             # print('Type of Scroll Area vboxlayout second item: ',itemGroupBox.layout().itemAt(0).widget().widget().layout().itemAt(1))
         print(self.dictScrapedTab)
         print()
@@ -427,11 +443,11 @@ class Ui_MainWindow(object):
         noOfSlots = groupBox.layout().itemAt(0).widget().widget().layout().itemAt(1).count()
         vBoxLayoutSlots = groupBox.layout().itemAt(0).widget().widget().layout().itemAt(1)
         for i in range(noOfSlots):
-            slotNumber = vBoxLayoutSlots.itemAt(i).itemAt(0).widget().text()
+            slotNumber = vBoxLayoutSlots.itemAt(i).itemAt(0).widget().text().replace("Slot ","")
             print("Slot Number: ",slotNumber)
             dictScrape[slotNumber]={}
             self.scrapeEachTimeSlot(vBoxLayoutSlots.itemAt(i),dictScrape[slotNumber])
-            dictScrape[slotNumber]["env"]={}
+            dictScrape[slotNumber]["env"]={} 
             self.scrapeRestItems(vBoxLayoutSlots.itemAt(i),dayNumber,slotNumber,dictScrape[slotNumber]["env"])
         print()
 
@@ -439,6 +455,7 @@ class Ui_MainWindow(object):
         #Mode item
         label = formLayout.itemAt(3,QFormLayout.ItemRole.LabelRole).widget().text()
         field = formLayout.itemAt(3,QFormLayout.ItemRole.FieldRole).widget().text()
+        field = self.options.index(field) if field in self.options else -1
 
         # if(field == "Select an option"):
         #     windowTitle = "Invalid Data!"
@@ -448,25 +465,79 @@ class Ui_MainWindow(object):
         #     return
 
         dictScrape["n"]=self.n_slaves
-        dictScrape[label]=field
-        # self.scrapeParams
+        dictScrape["mode"]=field
+
+        #Parameters:
+        dictScrape["params"]={}
+        layoutParams = formLayout.itemAt(5,QFormLayout.ItemRole.LabelRole).widget().layout()
+        # print("Count: ",layoutParams.count())
+        for i in range(layoutParams.rowCount()):
+            labelParams = layoutParams.itemAt(i,QFormLayout.ItemRole.LabelRole).widget().text()
+            fieldParams = layoutParams.itemAt(i,QFormLayout.ItemRole.FieldRole).widget().text()
+            # print("i: ",i)
+            # print("label: ",labelParams)
+            # print("field: ",fieldParams)
+            # print()
+            labelParams = labelParams.replace("Green ","g")
+            labelParams = labelParams.replace("Amber ","a")
+            labelParams = labelParams.replace("Frequency","f")
+            dictScrape["params"][labelParams]=fieldParams
+
+        #Pedestrian Check
+        label = formLayout.itemAt(6,QFormLayout.ItemRole.LabelRole).widget().text()
+        field = formLayout.itemAt(6,QFormLayout.ItemRole.FieldRole).widget().isChecked()
+        # print("label: ",label)
+        # print("field: ",field)
+        dictScrape["pedestrian"]=0 if field == False else 1
+
+        #Pedestrian Timer
+        label = formLayout.itemAt(7,QFormLayout.ItemRole.LabelRole).widget().text()
+        field = formLayout.itemAt(7,QFormLayout.ItemRole.FieldRole).widget().text()
+        # print("label: ",label)
+        # print("field: ",field)
+        dictScrape["ped_timer"]=field
+
+        #Red Ext Check
+        label = formLayout.itemAt(8,QFormLayout.ItemRole.LabelRole).widget().text()
+        field = formLayout.itemAt(8,QFormLayout.ItemRole.FieldRole).widget().isChecked()
+        # print("label: ",label)
+        # print("field: ",field)
+        dictScrape["red_ext"]=0 if field == False else 1
+
+        #Red Ext Timer
+        label = formLayout.itemAt(9,QFormLayout.ItemRole.LabelRole).widget().text()
+        field = formLayout.itemAt(9,QFormLayout.ItemRole.FieldRole).widget().text()
+        # print("label: ",label)
+        # print("field: ",field)
+        dictScrape["r_ext_timer"]=field
+
+        #Slave Enable Check
+        layoutSlaveEnable = formLayout.itemAt(10,QFormLayout.ItemRole.LabelRole).widget().layout()
+        dictScrape["slave_enables"]={}
+        for i in range(layoutSlaveEnable.rowCount()):
+            label = layoutSlaveEnable.itemAt(i,QFormLayout.ItemRole.LabelRole).widget().text()
+            field = layoutSlaveEnable.itemAt(i,QFormLayout.ItemRole.FieldRole).widget().isChecked()
+            print("label: ",label)
+            print("field: ",field)
+            label = label.replace("Slave ","")
+            dictScrape["slave_enables"][label]=0 if field == False else 1
 
     def scrapeEachTimeSlot(self,formLayout,dictScrape):
         label = formLayout.itemAt(1,QFormLayout.ItemRole.LabelRole)
         field = formLayout.itemAt(1,QFormLayout.ItemRole.FieldRole)
-        self.scrapeTimeOfSlot(label.widget(),field.widget(),dictScrape)
+        self.scrapeTimeOfSlot("start",field.widget(),dictScrape)
 
         label = formLayout.itemAt(2,QFormLayout.ItemRole.LabelRole)
         field = formLayout.itemAt(2,QFormLayout.ItemRole.FieldRole)
-        self.scrapeTimeOfSlot(label.widget(),field.widget(),dictScrape)
+        self.scrapeTimeOfSlot("end",field.widget(),dictScrape)
 
     def scrapeTimeOfSlot(self,label,field,dictScrape):
         # print(label.text())
-        dictScrape[label.text()]={}
+        dictScrape[label]={}
         for i in range(0,field.layout().count(),2):
             itemText = field.layout().itemAt(i).widget().text()
             itemLabel = field.layout().itemAt(i+1).widget().text()
-            dictScrape[label.text()][itemLabel]=itemText
+            dictScrape[label][itemLabel]=itemText
 
     def callPopup(self,windowTitle,popupText):
         popup = QMessageBox()
@@ -479,8 +550,12 @@ class Ui_MainWindow(object):
         popup.exec()
         return
 
+    def reconfigureDict(self):
+        pass
+
     def deployToBroker(self):
         self.scrapeMasterTab()
+        self.reconfigureDict()
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
