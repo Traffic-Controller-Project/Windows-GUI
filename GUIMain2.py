@@ -78,6 +78,13 @@ class Ui_MainWindow(object):
         self.menubar = QtWidgets.QMenuBar(parent=MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1046, 26))
         self.menubar.setObjectName("menubar")
+
+        menuFile = self.menubar.addMenu("")
+        menuFile.setTitle("File")
+        actionLoad = menuFile.addAction("Load Configuration")
+        actionSave= menuFile.addAction("Save Configuration")
+        actionSave.triggered.connect(self.saveConfiguration)
+        self.menubar.addMenu(menuFile)
         MainWindow.setMenuBar(self.menubar)
 
         self.retranslateUi(MainWindow)
@@ -265,25 +272,6 @@ class Ui_MainWindow(object):
         self.makeSlotStructure(self.vLayoutGroupBoxMaster)
         
     def makeSlotStructure(self,vLayout):
-
-        # formLayoutSlavesNum = QFormLayout()
-        # hLayoutSlavesNum = QHBoxLayout()
-        # widgetSlavesNum = QWidget()
-        # labelSlavesNum = QLabel("Number of Slaves")
-        # lineEditSlavesNum = QLineEdit()
-        # lineEditSlavesNum.setMaximumSize(100,20)
-        # pushButtonSlavesNum = QPushButton("Set Slaves")
-        # pushButtonSlavesNum.clicked.connect(lambda checked,lineEdit=lineEditSlavesNum: self.show_slaves(lineEdit))
-        # hLayoutSlavesNum.addWidget(lineEditSlavesNum)
-        # hLayoutSlavesNum.addWidget(pushButtonSlavesNum)
-        # widgetSlavesNum.setLayout(hLayoutSlavesNum)
-        # hLayoutSlavesNum.addSpacerItem(QSpacerItem(200,20))
-        # formLayoutSlavesNum.addRow(labelSlavesNum,widgetSlavesNum)
-
-        # # hLayoutSlavesNum.setSpacing(200)
-        # formLayoutSlavesNum.setHorizontalSpacing(200)
-
-        # vLayout.addLayout(formLayoutSlavesNum)
 
         self.listDays = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
         # self.listDays = ["Sunday"]
@@ -697,6 +685,83 @@ class Ui_MainWindow(object):
 
         popup.exec()
         return
+    
+    def serializeWidget(self, widget):
+        widget_info = {
+            "type": widget.metaObject().className(),
+            "geometry": {
+                "x": widget.geometry().x(),
+                "y": widget.geometry().y(),
+                "width": widget.geometry().width(),
+                "height": widget.geometry().height()
+            }
+            # Add more properties as needed
+        }
+
+        if isinstance(widget, QLabel):
+            widget_info["text"] = widget.text()
+
+        if isinstance(widget, QScrollArea):
+            if widget.widget():
+                widget_info["content"] = self.serializeWidget(widget.widget())
+
+        if isinstance(widget,QWidget):
+            self.serializeLayout(widget.layout())
+
+        return widget_info
+
+    def serializeLayout(self, layout):
+        if(layout):
+            layout_info = []
+            for i in range(layout.count()):
+                item = layout.itemAt(i)
+                if item.widget():
+                    widget = item.widget()
+                    widget_info = self.serializeWidget(widget)
+                    layout_info.append(widget_info)
+                elif item.layout():
+                    sub_layout = item.layout()
+                    sub_layout_info = self.serializeLayout(sub_layout)
+                    layout_info.append(sub_layout_info)
+            return layout_info
+        return None
+    
+    # def serializeFormLayout(self,layout):
+    #     if(layout):
+    #         layout_info = []
+    #         for i in range(layout.count()):
+    #             itemLabel = layout.itemAt(i,QFormLayout.ItemRole.LabelRole)
+    #             itemField = layout.itemAt(i,QFormLayout.ItemRole.FieldRole)
+    #             if itemLabel.widget():
+    #                 widget = itemLabel.widget()
+    #                 widget_info = self.serializeWidget(widget)
+    #                 layout_info.append(widget_info)
+    #             elif itemLabel.layout():
+    #                 sub_layout = itemLabel.layout()
+    #                 sub_layout_info = self.serializeLayout(sub_layout)
+    #                 layout_info.append(sub_layout_info)
+    #             if itemField.widget():
+    #                 widget = itemField.widget()
+    #                 widget_info = self.serializeWidget(widget)
+    #                 layout_info.append(widget_info)
+    #             elif itemField.layout():
+    #                 sub_layout = itemField.layout()
+    #                 sub_layout_info = self.serializeLayout(sub_layout)
+    #                 layout_info.append(sub_layout_info)
+    #         return layout_info
+    #     return None
+
+    def saveConfiguration(self):
+        # Create a configuration dictionary
+        config = {
+            "layout": self.serializeLayout(self.tabSetMaster.layout())
+            # Add more configuration options as needed
+        }
+
+        # Serialize the configuration to a file
+        with open("configuration.json", "w") as config_file:
+            json.dump(config, config_file, indent=4)
+        print("Configuration saved.")
 
     def deployToBroker(self):
         self.scrapeMasterTab()
