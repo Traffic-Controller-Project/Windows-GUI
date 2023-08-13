@@ -11,6 +11,8 @@ from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 
+import json
+
 def is_convertible_to_int(string):
     try:
         int(string)
@@ -556,6 +558,8 @@ class Ui_MainWindow(object):
     def deployToBroker(self):
         self.scrapeMasterTab()
         self.reconfigureDict()
+        JSONScrapedTab = json.dumps(self.dictScrapedTab)
+        print("JSON: ",JSONScrapedTab)
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
