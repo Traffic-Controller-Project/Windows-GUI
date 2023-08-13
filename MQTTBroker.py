@@ -3,7 +3,6 @@ import keyboard
 import json
 
 # MQTT broker details
-data = None
 topics = ["/traffic/slave_feedback","/traffic/master_feedback"]
 broker = "traffic-controller.cloud.shiftr.io"
 port = 1883

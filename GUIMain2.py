@@ -12,7 +12,7 @@ from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 
 import paho.mqtt.client as mqtt
-from MQTTBroker import client,broker,port,topics,data
+from MQTTBroker import client,broker,port,topics
 
 import json
 
