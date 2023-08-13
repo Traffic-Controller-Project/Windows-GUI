@@ -234,13 +234,9 @@ class Ui_MainWindow(object):
         self.vLayoutGroupBoxMaster.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.gridLayoutGroupBoxSetMaster.addWidget(self.scrollArea, 1, 0, 1, 1)
-        self.gridLayoutSetMaster.addWidget(self.groupBoxSetMaster, 0, 0, 1, 1)
+        self.gridLayoutSetMaster.addWidget(self.groupBoxSetMaster, 1, 0, 1, 1)
 
         tabWidget.addTab(self.tabSetMaster, "Set Master State")
-
-        self.makeSlotStructure(self.vLayoutGroupBoxMaster)
-        
-    def makeSlotStructure(self,vLayout):
 
         formLayoutSlavesNum = QFormLayout()
         hLayoutSlavesNum = QHBoxLayout()
@@ -259,7 +255,35 @@ class Ui_MainWindow(object):
         # hLayoutSlavesNum.setSpacing(200)
         formLayoutSlavesNum.setHorizontalSpacing(200)
 
-        vLayout.addLayout(formLayoutSlavesNum)
+        self.gridLayoutSetMaster.addLayout(formLayoutSlavesNum,0,0,1,1)
+
+        pushButtonDeployButton = QPushButton("Deploy")
+        pushButtonDeployButton.clicked.connect(self.deployToBroker)
+        self.gridLayoutSetMaster.addWidget(pushButtonDeployButton,2,0,1,1)
+        self.gridLayoutSetMaster.setAlignment(pushButtonDeployButton,Qt.AlignmentFlag.AlignHCenter)
+
+        self.makeSlotStructure(self.vLayoutGroupBoxMaster)
+        
+    def makeSlotStructure(self,vLayout):
+
+        # formLayoutSlavesNum = QFormLayout()
+        # hLayoutSlavesNum = QHBoxLayout()
+        # widgetSlavesNum = QWidget()
+        # labelSlavesNum = QLabel("Number of Slaves")
+        # lineEditSlavesNum = QLineEdit()
+        # lineEditSlavesNum.setMaximumSize(100,20)
+        # pushButtonSlavesNum = QPushButton("Set Slaves")
+        # pushButtonSlavesNum.clicked.connect(lambda checked,lineEdit=lineEditSlavesNum: self.show_slaves(lineEdit))
+        # hLayoutSlavesNum.addWidget(lineEditSlavesNum)
+        # hLayoutSlavesNum.addWidget(pushButtonSlavesNum)
+        # widgetSlavesNum.setLayout(hLayoutSlavesNum)
+        # hLayoutSlavesNum.addSpacerItem(QSpacerItem(200,20))
+        # formLayoutSlavesNum.addRow(labelSlavesNum,widgetSlavesNum)
+
+        # # hLayoutSlavesNum.setSpacing(200)
+        # formLayoutSlavesNum.setHorizontalSpacing(200)
+
+        # vLayout.addLayout(formLayoutSlavesNum)
 
         self.listDays = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
         # self.listDays = ["Sunday"]
@@ -272,11 +296,6 @@ class Ui_MainWindow(object):
             groupBoxDay.setMinimumHeight(200)
 
             self.createSlotsForDay(groupBoxDay,i)
-
-        pushButtonDeployButton = QPushButton("Deploy")
-        pushButtonDeployButton.clicked.connect(self.deployToBroker)
-        vLayout.addWidget(pushButtonDeployButton)
-        vLayout.setAlignment(pushButtonDeployButton,Qt.AlignmentFlag.AlignHCenter)
         
 
     def createSlotsForDay(self,groupBoxDay,indexOfDay):
@@ -555,7 +574,7 @@ class Ui_MainWindow(object):
             self.callPopup(windowTitle,popupText)
             self.dictScrapedTab = {}
             return
-        for i in range(1,8):    
+        for i in range(0,7):    
             itemGroupBox = self.vLayoutGroupBoxMaster.itemAt(i).widget()
             itemGroupBoxTitle = self.listDays.index(itemGroupBox.title())
             self.dictScrapedTab[itemGroupBoxTitle]={}
