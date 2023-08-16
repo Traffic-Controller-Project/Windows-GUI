@@ -30,6 +30,12 @@ def is_convertible_to_int(string):
         return True
     except ValueError:
         return False
+    
+# Read JSON file
+def read_json_file(file_path):
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+    return data
 
 class Ui_MainWindow(object):
     def __init__(self):
@@ -43,17 +49,14 @@ class Ui_MainWindow(object):
         try:
             # Try parsing the payload as JSON
             data = json.loads(payload)
-            if(msg.topic == topics[0]):
-                self.received_message_slave = data
-                self.updateModel(treeModelsList["slave"],self.received_message_slave,"slave")
-            elif(msg.topic == topics[1]):
-                self.received_message_master = data
-                self.updateModel(treeModelsList["master"],self.received_message_master,"master")
+            self.received_message_slave = data
+            self.updateModel(treeModelsList["slave"],self.received_message_slave)
             print(f'Received JSON message: {data}')
         except json.JSONDecodeError:
             print(f'Received non-JSON message: {payload}')
+        except BaseException as be:
+            print(be)
         print(self.received_message_slave)
-        print(self.received_message_master)
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -99,30 +102,11 @@ class Ui_MainWindow(object):
         self.tabSummary = QtWidgets.QWidget()
         self.tabSummary.setObjectName("tabSummary")
         tabWidget.addTab(self.tabSummary, "Summary (View Only)")
-
-        #Master State Summary
         verticalLayout = QtWidgets.QVBoxLayout()
         verticalLayout.setObjectName("verticalLayout")
-        groupBox = QtWidgets.QGroupBox("Master State Summary",self.tabSummary)
-        groupBox.setObjectName("Master State Summary")
-        verticalLayout.addWidget(groupBox)
         self.gridLayout_2 = QtWidgets.QGridLayout(self.tabSummary)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.gridLayout_2.addLayout(verticalLayout, 0, 0)
-
-        treeModelMaster = QStandardItemModel()
-        treeViewMaster = QTreeView(groupBox)
-        treeViewMaster.setModel(treeModelMaster)
-        layout = QVBoxLayout()
-        layout.addWidget(treeViewMaster)
-        groupBox.setLayout(layout)
-        self.connectToMQTT()
-        columns = ["State Variable","Value"]
-        treeModelMaster.setHorizontalHeaderLabels(columns)
-        for i in range(len(columns)):
-            treeViewMaster.setColumnWidth(i,int(self.centralwidget.parent().width()/len(columns)))
-
-        treeModelsList["master"]=treeModelMaster
 
         #Slave State Summary
         groupBox = QtWidgets.QGroupBox("Slave State Summary",self.tabSummary)
@@ -136,65 +120,47 @@ class Ui_MainWindow(object):
         layout.addWidget(treeViewSlave)
         groupBox.setLayout(layout)
         self.connectToMQTT()
-        columns = ["Slave","Current Signal","Time allotted (s)","Time elapsed (s)","Status"]
+        columns = ["Slave ID","State","Time remaining (s)"]
         treeModelSlave.setHorizontalHeaderLabels(columns)
         for i in range(len(columns)):
             treeViewSlave.setColumnWidth(i,int(self.centralwidget.parent().width()/len(columns)))
 
         treeModelsList["slave"]=treeModelSlave
 
+        self.initialiseModel(treeModelSlave)
+
         pushButtonConnect = QPushButton()
         pushButtonConnect.setText("Connect to MQTT Broker")
         pushButtonConnect.clicked.connect(self.connectToMQTT)
         verticalLayout.addWidget(pushButtonConnect)
         verticalLayout.setAlignment(pushButtonConnect,Qt.AlignmentFlag.AlignHCenter)
-    
-    def updateModel(self,treeModel,msg,stringDevice):
-        if(stringDevice == "slave"):
-            itmList = []
-            print(self.received_message_master)
-            for item in list(msg.values()):
-                itm = None
-                if(isinstance(item,str) or isinstance(item,int)):
-                    itm = QStandardItem(str(item))
-                else:
-                    dictionary_string = json.dumps(item)
-                    dictionary_string = dictionary_string[1:len(dictionary_string)-1]
-                    itm = QStandardItem(dictionary_string)
-                itmList.append(itm)
-            
-            rowInd = int(itmList[0].text()) if is_convertible_to_int(itmList[0].text()) else treeModel.rowCount()
-            for colInd,item in enumerate(itmList):
-                print("Item text: ",item.text())
-                if(colInd == 1 and item.text() in list(dictSignalState.keys()) and dictSignalIcon[dictSignalState[item.text()]] is not None):
-                    iconPath = dictSignalIcon[dictSignalState[item.text()]]
-                    signalIcon = QtGui.QIcon()
-                    signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
-                    item.setText(dictSignalState[item.text()])
-                    item.setIcon(signalIcon)
-                treeModel.setItem(rowInd,colInd,item)
-            statusIcon = QtGui.QIcon()
-            statusIcon.addPixmap(QtGui.QPixmap("icons/icon_green.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
-            statusItem = QStandardItem("Healthy")
-            statusItem.setIcon(statusIcon)
-            treeModel.setItem(rowInd,4,statusItem)
-        else:
-            itmList = []
-            for rowInd,key in enumerate(list(msg.keys())):
-                itemState = QStandardItem(dictMasterKeys[key]) if key in dictMasterKeys else QStandardItem(key)
-                treeModel.setItem(rowInd,0,itemState)
-                value = msg[key]
-                if(isinstance(value,dict)):
-                    for ind,childKey in enumerate(value):
-                        childItemKey = QStandardItem(str(childKey))
-                        childItemValue = QStandardItem(str(value[childKey]))
-                        itemState.setChild(ind,0,childItemKey)
-                        itemState.setChild(ind,1,childItemValue)
-                # elif(key == "Number")
-                else:
-                    valueItem = QStandardItem(str(value))
-                    treeModel.setItem(rowInd,1,valueItem)            
 
+    def initialiseModel(self,treeModel):
+        self.dictSignal = {"off": ["Off","icons/icon_off.png"], "red": ["Red","icons/icon_red.png"], "amber": ["Amber","icons/icon_amber.png"], "green_fwd": ["Green Forward","icons/icon_greenForward.png"], "green_left": ["Green Left","icons/icon_greenLeft.png"], "green_right": ["Green Right","icons/icon_greenRight.png"]}
+        for i in range(7):
+            itemSlaveID = QStandardItem(str(i+1))
+            itemSlaveState = QStandardItem("Off")
+            itemSlaveTiming = QStandardItem("INF")
+            iconPath = self.dictSignal["off"][1]
+            signalIcon = QtGui.QIcon()
+            signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+            treeModel.setItem(i,0,itemSlaveID)
+            treeModel.setItem(i,1,itemSlaveState)
+            itemSlaveState.setIcon(signalIcon)
+            treeModel.setItem(i,2,itemSlaveTiming)
+
+    def updateModel(self,treeModel,msg):
+        pass
+        # print("Slave ID: ",int(msg["slave_id"])-1)
+        slave_id = int(msg["slave_id"])-1
+        iconPath = self.dictSignal[msg["state"]][1]
+        signalIcon = QIcon()
+        signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        itemState = treeModel.item(slave_id,1)
+        itemState.setIcon(signalIcon)
+        itemState.setText(self.dictSignal[msg["state"]][0])
+        itemTRemaining = treeModel.item(slave_id,2)
+        itemTRemaining.setText(str(msg["t_remaining"]))
 
     def createSetMasterTab(self,tabWidget):
         self.tabSetMaster = QtWidgets.QWidget()
@@ -561,7 +527,7 @@ class Ui_MainWindow(object):
             popupText = "Slaves not set!"
             self.callPopup(windowTitle,popupText)
             self.dictScrapedTab = {}
-            return
+            return -1
         for i in range(0,7):    
             itemGroupBox = self.vLayoutGroupBoxMaster.itemAt(i).widget()
             itemGroupBoxTitle = self.listDays.index(itemGroupBox.title())
@@ -570,6 +536,7 @@ class Ui_MainWindow(object):
             # print('Type of Scroll Area vboxlayout second item: ',itemGroupBox.layout().itemAt(0).widget().widget().layout().itemAt(1))
         print(self.dictScrapedTab)
         print()
+        return 1
 
     def scrapeGroupBox(self,groupBox,dayNumber,dictScrape):
 
@@ -764,7 +731,8 @@ class Ui_MainWindow(object):
         print("Configuration saved.")
 
     def deployToBroker(self):
-        self.scrapeMasterTab()
+        if(self.scrapeMasterTab() == -1):
+            return
         JSONScrapedTab = json.dumps(self.dictScrapedTab)
         print("JSON: ",JSONScrapedTab)
 
@@ -776,14 +744,13 @@ class Ui_MainWindow(object):
             except BaseException:
                 self.statusLabel.setText("Could not connect!")
                 client.disconnect()
-        result = client.publish("/traffic/updates",JSONScrapedTab)
+        result = client.publish("/traffic/slots",JSONScrapedTab)
         if(result.rc == mqtt.MQTT_ERR_SUCCESS):
             self.statusLabel.setText("Deployed!")
         else:
             self.statusLabel.setText("Could not deploy!")
     
     def connectToMQTT(self):
-        self.statusLabel.setText("Connecting")
         # Call a method to update the status bar message
         if(client.is_connected() != True):
             try:
