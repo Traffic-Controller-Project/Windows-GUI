@@ -579,11 +579,11 @@ class Ui_MainWindow(object):
         noOfSlots = groupBox.layout().itemAt(0).widget().widget().layout().itemAt(1).count()
         vBoxLayoutSlots = groupBox.layout().itemAt(0).widget().widget().layout().itemAt(1)
         for i in range(noOfSlots):
-            slotNumber = vBoxLayoutSlots.itemAt(i).itemAt(0).widget().text().replace("Slot ","")
+            slotNumber = int(vBoxLayoutSlots.itemAt(i).itemAt(0).widget().text().replace("Slot ",""))-1
             print("Slot Number: ",slotNumber)
             dictScrape[slotNumber]={}
             self.scrapeEachTimeSlot(vBoxLayoutSlots.itemAt(i),dictScrape[slotNumber])
-            dictScrape[slotNumber]["env"]={} 
+            dictScrape[slotNumber]["env"]={}
             self.scrapeRestItems(vBoxLayoutSlots.itemAt(i),dayNumber,slotNumber,dictScrape[slotNumber]["env"])
         print()
 
@@ -655,7 +655,7 @@ class Ui_MainWindow(object):
             field = layoutSlaveEnable.itemAt(i,QFormLayout.ItemRole.FieldRole).widget().isChecked()
             print("label: ",label)
             print("field: ",field)
-            label = label.replace("Slave ","")
+            label = int(label.replace("Slave ",""))-1
             dictScrape["slave_enables"][label]=0 if field == False else 1
 
     def scrapeEachTimeSlot(self,formLayout,dictScrape):

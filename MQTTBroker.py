@@ -4,10 +4,14 @@ import json
 
 # MQTT broker details
 topics = ["/traffic/slave_feedback","/traffic/master_feedback"]
-broker = "traffic-controller.cloud.shiftr.io"
+# broker = "traffic-controller.cloud.shiftr.io"
+# port = 1883
+# username = "traffic-controller"
+# password = "sZG1eCQPPOS7nmBg"
+broker = "192.168.86.14"
 port = 1883
-username = "traffic-controller"
-password = "sZG1eCQPPOS7nmBg"
+username = "raspi_broker"
+password = "12345678"
 client_id = "GUIClient"
 
 # Callback functions
