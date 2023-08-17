@@ -1173,7 +1173,7 @@ if __name__ == "__main__":
     ui.setupUi(MainWindow)
     MainWindow.show()
     try:
-        client.connect(broker,port,60)
+        print(client.connect(broker,port,60))
         for topic in topics:
             client.subscribe(topic)
         client.on_message = ui.on_message
