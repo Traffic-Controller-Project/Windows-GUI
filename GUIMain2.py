@@ -408,6 +408,11 @@ class Ui_MainWindow(object):
         self.gridLayoutSetMaster.addWidget(pushButtonDeployButton,2,0,1,1)
         self.gridLayoutSetMaster.setAlignment(pushButtonDeployButton,Qt.AlignmentFlag.AlignHCenter)
 
+        pushButtonDeployButton = QPushButton("Set all to blink")
+        pushButtonDeployButton.clicked.connect(self.deployToBrokerBlink)
+        self.gridLayoutSetMaster.addWidget(pushButtonDeployButton,3,0,1,1)
+        self.gridLayoutSetMaster.setAlignment(pushButtonDeployButton,Qt.AlignmentFlag.AlignHCenter)
+
         self.makeSlotStructure(self.vLayoutGroupBoxMaster)
         
     def makeSlotStructure(self,vLayout):
@@ -1128,6 +1133,36 @@ class Ui_MainWindow(object):
             return
         JSONScrapedTab = json.dumps(self.dictScrapedTab)
         print("JSON: ",JSONScrapedTab)
+
+        if(client.is_connected() != True):
+            try:
+                rc = client.connect(broker,port,60)
+                if(rc != 0):
+                    self.statusLabel.setText("Could not connect!")
+            except BaseException:
+                self.statusLabel.setText("Could not connect!")
+                client.disconnect()
+        result = client.publish("/traffic/slots",JSONScrapedTab)
+        if(result.rc == mqtt.MQTT_ERR_SUCCESS):
+            self.statusLabel.setText("Deployed!")
+        else:
+            self.statusLabel.setText("Could not deploy!")
+    
+    def refactorDict(self,dictScrapedTab):
+        for keyDay in dictScrapedTab:
+            for keySlot in dictScrapedTab[keyDay]:
+                del dictScrapedTab[keyDay][keySlot]["env"]["params"]
+                dictScrapedTab[keyDay][keySlot]["env"]["params"] = {}
+                dictScrapedTab[keyDay][keySlot]["env"]["mode"] = 2
+                dictScrapedTab[keyDay][keySlot]["env"]["params"]["f"]=0.5
+    
+    def deployToBrokerBlink(self):
+        if(self.scrapeMasterTab() == -1):
+            return
+        self.refactorDict(self.dictScrapedTab)
+        JSONScrapedTab = json.dumps(self.dictScrapedTab)
+        print("JSON: ",JSONScrapedTab)
+        
 
         if(client.is_connected() != True):
             try:

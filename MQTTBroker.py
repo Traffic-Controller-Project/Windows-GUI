@@ -33,5 +33,3 @@ client.username_pw_set(username, password)
 client.on_connect = on_connect
 client.on_publish = on_publish
 client.on_subscribe = on_subscribe
-
-client.connect(broker,port,60)
