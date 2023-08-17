@@ -286,9 +286,9 @@ class Ui_MainWindow(object):
             itemSlaveState.setIcon(signalIcon)
             treeModel.setItem(i,2,itemSlaveTiming)
 
-    def updateModel(self,treeModel,msg):
+    def updateModel(self,treeModel,msg,model):
         # print("Slave ID: ",int(msg["slave_id"])-1)
-        if(msg=="slave"):
+        if(model=="slave"):
             slave_id = int(msg["slave_id"])-1
             iconPath = self.dictSignal[msg["state"]][1]
             signalIcon = QIcon()
@@ -298,13 +298,13 @@ class Ui_MainWindow(object):
             itemState.setText(self.dictSignal[msg["state"]][0])
             itemTRemaining = treeModel.item(slave_id,2)
             itemTRemaining.setText(str(msg["t_remaining"]))
-        elif(msg=="Slave Lamp Status"):
+        elif(model=="Slave Lamp Status"):
             slave_id = int(msg["slave_id"])-1
             itemSlaveID = treeModel.item(slave_id,0)
 
             # Primary
             listStatus = []
-            ind = 0
+            ind = 1
             for key in msg:
                 if(key == "slave_id"):
                     continue
@@ -315,9 +315,11 @@ class Ui_MainWindow(object):
                 listStatus.clear()
                 ind += 1
 
-        elif(msg=="Slave Monitoring"):
+        elif(model=="Slave Monitoring"):
             slave_id = int(msg["slave_id"])-1
-            ind = 0
+            itemSlaveID = treeModel.item(slave_id,0)
+            
+            ind = 1
             for key in msg:
                 if(key == "slave_id"):
                     continue
@@ -1150,6 +1152,9 @@ class Ui_MainWindow(object):
                     self.statusLabel.setText("Could not connect!")
                 else:
                     self.statusLabel.setText("Connected!")
+                    for topic in topics:
+                        client.subscribe(topic)
+                    client.on_message = ui.on_message
 
             except BaseException:
                 self.statusLabel.setText("Could not connect!")
