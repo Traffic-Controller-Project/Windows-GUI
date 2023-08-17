@@ -43,14 +43,25 @@ class Ui_MainWindow(object):
         self.n_slaves = 0
         self.received_message_slave = None
         self.received_message_master = None
+        self.received_message_slave_status = None
+        self.received_message_slave_monitoring = None
 
     def on_message(self,client, userdata, msg):
         payload = msg.payload.decode("utf-8")
         try:
             # Try parsing the payload as JSON
-            data = json.loads(payload)
-            self.received_message_slave = data
-            self.updateModel(treeModelsList["slave"],self.received_message_slave)
+            if(msg.topic == "/traffic/slave_feedback"):
+                data = json.loads(payload)
+                self.received_message_slave = data
+                self.updateModel(treeModelsList["slave"],self.received_message_slave,"slave")
+            elif(msg.topic == "/traffic/lamp_status"):
+                data = json.loads(payload)
+                self.received_message_slave_status = data
+                self.updateModel(treeModelsList["Slave Lamp Status"],self.received_message_slave_status,"Slave Lamp Status")
+            elif(msg.topic == "/traffic/monitoring"):
+                data = json.loads(payload)
+                self.received_message_slave_monitoring = data
+                self.updateModel(treeModelsList["Slave Monitoring"],self.received_message_slave_monitoring,"Slave Monitoring")
             print(f'Received JSON message: {data}')
         except json.JSONDecodeError:
             print(f'Received non-JSON message: {payload}')
@@ -97,6 +108,7 @@ class Ui_MainWindow(object):
     def createTabs(self,tabWidget):
         self.createSummaryTab(tabWidget)
         self.createSetMasterTab(tabWidget)
+        self.createActivateSlavesTab(tabWidget)
 
     def createSummaryTab(self,tabWidget):
         self.tabSummary = QtWidgets.QWidget()
@@ -149,7 +161,7 @@ class Ui_MainWindow(object):
 
         treeModelsList["Slave Monitoring"]=treeModelSlaveMonitoring
 
-        self.initialiseModelMonitoring(treeModelSlaveMonitoring)
+        self.initialiseModelMonitoring(treeModelSlaveMonitoring,"Healthy")
 
         #Slave Lamp Status
         groupBox = QtWidgets.QGroupBox("Slave Lamp Status",self.tabSummary)
@@ -171,7 +183,7 @@ class Ui_MainWindow(object):
 
         treeModelsList["Slave Lamp Status"]=treeModelSlaveLampStatus
 
-        self.initialiseModelLampStatus(treeModelSlaveLampStatus)
+        self.initialiseModelMonitoring(treeModelSlaveLampStatus,"Off")
 
         pushButtonConnect = QPushButton()
         pushButtonConnect.setText("Connect to MQTT Broker")
@@ -179,75 +191,86 @@ class Ui_MainWindow(object):
         verticalLayout.addWidget(pushButtonConnect)
         verticalLayout.setAlignment(pushButtonConnect,Qt.AlignmentFlag.AlignHCenter)
 
-    def initialiseModelLampStatus(self,treeModel):
+    def initialiseModelMonitoring(self,treeModel,status=""):
         for i in range(7):
             itemSlaveID = QStandardItem(str(i+1))
             treeModel.setItem(i,0,itemSlaveID)
 
             # Primary
-            self.setItemsMonitoring(itemSlaveID,1,["Off"]*5)
+            self.setItemsMonitoring(itemSlaveID,1,[status]*5)
             # Secondary
-            self.setItemsMonitoring(itemSlaveID,2,["Off"]*5)
+            self.setItemsMonitoring(itemSlaveID,2,[status]*5)
             # Overhead
-            self.setItemsMonitoring(itemSlaveID,3,["Off"]*5)
+            self.setItemsMonitoring(itemSlaveID,3,[status]*5)
             # Spare
-            self.setItemsMonitoring(itemSlaveID,4,["Off"]*5)
-
-    def initialiseModelMonitoring(self,treeModel):
-        for i in range(7):
-            itemSlaveID = QStandardItem(str(i+1))
-            treeModel.setItem(i,0,itemSlaveID)
-
-            # Primary
-            self.setItemsMonitoring(itemSlaveID,1,["Healthy"]*5)
-            # Secondary
-            self.setItemsMonitoring(itemSlaveID,2,["Healthy"]*5)
-            # Overhead
-            self.setItemsMonitoring(itemSlaveID,3,["Healthy"]*5)
-            # Spare
-            self.setItemsMonitoring(itemSlaveID,4,["Healthy"]*5)
+            self.setItemsMonitoring(itemSlaveID,4,[status]*5)
             
 
     def setItemsMonitoring(self,itemSlaveID,col,listStatus):
         # Red
-        itemRedPrimary = QStandardItem(listStatus[0])
-        itemSlaveID.setChild(0,col,itemRedPrimary)
-        iconPath = self.dictSignal["red"][1]
-        signalIcon = QtGui.QIcon()
-        signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
-        itemRedPrimary.setIcon(signalIcon)
+        itemRedPrimary = None
+        if(itemSlaveID.child(0,col) == None):
+            itemRedPrimary = QStandardItem(listStatus[0])
+            iconPath = self.dictSignal["red"][1]
+            signalIcon = QtGui.QIcon()
+            signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+            itemRedPrimary.setIcon(signalIcon)
+            itemSlaveID.setChild(0,col,itemRedPrimary)
+        else:
+            itemRedPrimary = itemSlaveID.child(0,col)
+            itemRedPrimary.setText(listStatus[0])
 
         # Amber
-        itemAmberPrimary = QStandardItem(listStatus[1])
-        itemSlaveID.setChild(1,col,itemAmberPrimary)
-        iconPath = self.dictSignal["amber"][1]
-        signalIcon = QtGui.QIcon()
-        signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
-        itemAmberPrimary.setIcon(signalIcon)
+        itemAmberPrimary = None
+        if(itemSlaveID.child(1,col) == None):
+            itemAmberPrimary = QStandardItem(listStatus[1])
+            iconPath = self.dictSignal["amber"][1]
+            signalIcon = QtGui.QIcon()
+            signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+            itemAmberPrimary.setIcon(signalIcon)
+            itemSlaveID.setChild(1,col,itemAmberPrimary)
+        else:
+            itemAmberPrimary = itemSlaveID.child(1,col)
+            itemAmberPrimary.setText(listStatus[1])
 
         # Green Forward
-        itemGFwdPrimary = QStandardItem(listStatus[2])
-        itemSlaveID.setChild(2,col,itemGFwdPrimary)
-        iconPath = self.dictSignal["green_fwd"][1]
-        signalIcon = QtGui.QIcon()
-        signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
-        itemGFwdPrimary.setIcon(signalIcon)
+        itemGFwdPrimary = None
+        if(itemSlaveID.child(2,col) == None):
+            itemGFwdPrimary = QStandardItem(listStatus[2])
+            iconPath = self.dictSignal["green_fwd"][1]
+            signalIcon = QtGui.QIcon()
+            signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+            itemGFwdPrimary.setIcon(signalIcon)
+            itemSlaveID.setChild(2,col,itemGFwdPrimary)
+        else:
+            itemGFwdPrimary = itemSlaveID.child(2,col)
+            itemGFwdPrimary.setText(listStatus[2])
 
         # Green Left
-        itemGLftPrimary = QStandardItem(listStatus[3])
-        itemSlaveID.setChild(3,col,itemGLftPrimary)
-        iconPath = self.dictSignal["green_left"][1]
-        signalIcon = QtGui.QIcon()
-        signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
-        itemGLftPrimary.setIcon(signalIcon)
+        itemGLftPrimary = None
+        if(itemSlaveID.child(3,col) == None):
+            itemGLftPrimary = QStandardItem(listStatus[3])
+            iconPath = self.dictSignal["green_left"][1]
+            signalIcon = QtGui.QIcon()
+            signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+            itemGLftPrimary.setIcon(signalIcon)
+            itemSlaveID.setChild(3,col,itemGLftPrimary)
+        else:
+            itemGLftPrimary = itemSlaveID.child(3,col)
+            itemGLftPrimary.setText(listStatus[3])
 
         # Green Right
-        itemGRgtPrimary = QStandardItem(listStatus[4])
-        itemSlaveID.setChild(4,col,itemGRgtPrimary)
-        iconPath = self.dictSignal["green_right"][1]
-        signalIcon = QtGui.QIcon()
-        signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
-        itemGRgtPrimary.setIcon(signalIcon)
+        itemGRgtPrimary = None
+        if(itemSlaveID.child(4,col) == None):
+            itemGRgtPrimary = QStandardItem(listStatus[4])
+            iconPath = self.dictSignal["green_right"][1]
+            signalIcon = QtGui.QIcon()
+            signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+            itemGRgtPrimary.setIcon(signalIcon)
+            itemSlaveID.setChild(4,col,itemGRgtPrimary)
+        else:
+            itemGRgtPrimary = itemSlaveID.child(4,col)
+            itemGRgtPrimary.setText(listStatus[4])
 
     def initialiseModel(self,treeModel):
         self.dictSignal = {"off": ["Off","icons/icon_off.png"], "red": ["Red","icons/icon_red.png"], "amber": ["Amber","icons/icon_amber.png"], "green_fwd": ["Green Forward","icons/icon_greenForward.png"], "green_left": ["Green Left","icons/icon_greenLeft.png"], "green_right": ["Green Right","icons/icon_greenRight.png"]}
@@ -265,15 +288,50 @@ class Ui_MainWindow(object):
 
     def updateModel(self,treeModel,msg):
         # print("Slave ID: ",int(msg["slave_id"])-1)
-        slave_id = int(msg["slave_id"])-1
-        iconPath = self.dictSignal[msg["state"]][1]
-        signalIcon = QIcon()
-        signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
-        itemState = treeModel.item(slave_id,1)
-        itemState.setIcon(signalIcon)
-        itemState.setText(self.dictSignal[msg["state"]][0])
-        itemTRemaining = treeModel.item(slave_id,2)
-        itemTRemaining.setText(str(msg["t_remaining"]))
+        if(msg=="slave"):
+            slave_id = int(msg["slave_id"])-1
+            iconPath = self.dictSignal[msg["state"]][1]
+            signalIcon = QIcon()
+            signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+            itemState = treeModel.item(slave_id,1)
+            itemState.setIcon(signalIcon)
+            itemState.setText(self.dictSignal[msg["state"]][0])
+            itemTRemaining = treeModel.item(slave_id,2)
+            itemTRemaining.setText(str(msg["t_remaining"]))
+        elif(msg=="Slave Lamp Status"):
+            slave_id = int(msg["slave_id"])-1
+            itemSlaveID = treeModel.item(slave_id,0)
+
+            # Primary
+            listStatus = []
+            ind = 0
+            for key in msg:
+                if(key == "slave_id"):
+                    continue
+                listStatus = list(msg[key].values())
+                for i,item in enumerate(listStatus):
+                    listStatus[i]="Off" if (item == 0 or item == "0") else "On"
+                self.setItemsMonitoring(itemSlaveID,ind,listStatus)
+                listStatus.clear()
+                ind += 1
+
+        elif(msg=="Slave Monitoring"):
+            slave_id = int(msg["slave_id"])-1
+            ind = 0
+            for key in msg:
+                if(key == "slave_id"):
+                    continue
+                listMonitoring = list(msg[key].values())
+                for i,item in enumerate(listMonitoring):
+                    if(item == 0 or item == "0"):
+                        listMonitoring[i]="Healthy"
+                    if(item == 1 or item == "1"):
+                        listMonitoring[i]="Mismatch"
+                    if(item == 2 or item == "2"):
+                        listMonitoring[i]="Overcurrent"
+                self.setItemsMonitoring(itemSlaveID,ind,listMonitoring)
+                listMonitoring.clear()
+                ind += 1
 
     def createSetMasterTab(self,tabWidget):
         self.tabSetMaster = QtWidgets.QWidget()
@@ -602,6 +660,226 @@ class Ui_MainWindow(object):
         for i in range(self.n_slaves):
             itm = formLayoutSlaveEnable.itemAt(i,QFormLayout.ItemRole.FieldRole).widget()
             itm.setChecked(True)
+
+    def createActivateSlavesTab(self,tabWidget):
+        self.tabActivateSlaves = QtWidgets.QWidget()
+        self.tabActivateSlaves.setObjectName("tabActivateSlaves")
+
+        self.gridLayoutActivateSlave = QtWidgets.QGridLayout(self.tabActivateSlaves)
+        self.gridLayoutActivateSlave.setObjectName("gridLayoutActivateSlave")
+
+        self.groupBoxActivateSlave = QtWidgets.QGroupBox("Activate Slaves",self.tabActivateSlaves)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.groupBoxActivateSlave.sizePolicy().hasHeightForWidth())
+        self.groupBoxActivateSlave.setSizePolicy(sizePolicy)
+        # self.groupBoxActivateSlave.setMaximumSize(QtCore.QSize(1000, 565))
+        self.groupBoxActivateSlave.setObjectName("groupBoxActivateSlave")
+        self.gridLayoutSlaveActivate = QtWidgets.QGridLayout(self.groupBoxActivateSlave)
+        self.gridLayoutSlaveActivate.setObjectName("gridLayoutSlaveActivate")
+
+        self.scrollAreaActivateSlave = QtWidgets.QScrollArea(parent=self.groupBoxActivateSlave)
+
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.scrollAreaActivateSlave.sizePolicy().hasHeightForWidth())
+
+        self.scrollAreaActivateSlave.setSizePolicy(sizePolicy)
+        self.scrollAreaActivateSlave.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.scrollAreaActivateSlave.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.scrollAreaActivateSlave.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustToContents)
+        self.scrollAreaActivateSlave.setWidgetResizable(True)
+        self.scrollAreaActivateSlave.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeading|QtCore.Qt.AlignmentFlag.AlignLeft|QtCore.Qt.AlignmentFlag.AlignVCenter)
+        # self.scrollAreaActivateSlave.setStyleSheet("QScrollArea {background-color:white}")
+        self.scrollAreaActivateSlave.setObjectName("scrollAreaActivateSlave")
+
+        self.scrollAreaActivateSlaveWidgetContents = QtWidgets.QWidget()
+        self.scrollAreaActivateSlaveWidgetContents.setGeometry(QtCore.QRect(0,0,800,800))
+        self.scrollAreaActivateSlaveWidgetContents.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
+        self.scrollAreaActivateSlaveWidgetContents.setObjectName("scrollAreaActivateSlaveWidgetContents")
+        # self.scrollAreaActivateSlaveWidgetContents.setStyleSheet("QWidget {background-color:white}")
+
+        self.vLayoutActivateSlaves = QtWidgets.QVBoxLayout(self.scrollAreaActivateSlaveWidgetContents)
+        self.vLayoutActivateSlaves.setObjectName("vLayoutActivateSlaves")
+        self.vLayoutActivateSlaves.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.scrollAreaActivateSlave.setWidget(self.scrollAreaActivateSlaveWidgetContents)
+        self.gridLayoutSlaveActivate.addWidget(self.scrollAreaActivateSlave, 1, 0, 1, 1)
+        self.gridLayoutActivateSlave.addWidget(self.groupBoxActivateSlave, 1, 0, 1, 1)
+
+        tabWidget.addTab(self.tabActivateSlaves, "Activate Slaves")
+
+        formLayoutSlavesNum = QFormLayout()
+        hLayoutSlavesNum = QHBoxLayout()
+        widgetSlavesNum = QWidget()
+        labelSlavesNum = QLabel("Number of Slaves")
+        lineEditSlavesNum = QLineEdit()
+        lineEditSlavesNum.setMaximumSize(100,20)
+        pushButtonSlavesNum = QPushButton("Set Slaves")
+        pushButtonSlavesNum.clicked.connect(lambda checked,lineEdit=lineEditSlavesNum: self.show_slaves(lineEdit))
+        hLayoutSlavesNum.addWidget(lineEditSlavesNum)
+        hLayoutSlavesNum.addWidget(pushButtonSlavesNum)
+        widgetSlavesNum.setLayout(hLayoutSlavesNum)
+        hLayoutSlavesNum.addSpacerItem(QSpacerItem(200,20))
+        formLayoutSlavesNum.addRow(labelSlavesNum,widgetSlavesNum)
+
+        # hLayoutSlavesNum.setSpacing(200)
+        formLayoutSlavesNum.setHorizontalSpacing(200)
+
+        self.gridLayoutActivateSlave.addLayout(formLayoutSlavesNum,0,0,1,1)
+
+        pushButtonDeployButton = QPushButton("Deploy")
+        pushButtonDeployButton.clicked.connect(self.deployToBrokerActivateSlave)
+        self.gridLayoutActivateSlave.addWidget(pushButtonDeployButton,2,0,1,1)
+        self.gridLayoutActivateSlave.setAlignment(pushButtonDeployButton,Qt.AlignmentFlag.AlignHCenter)
+
+        self.addEachSlaveStructure(self.vLayoutActivateSlaves)
+
+    def addEachSlaveStructure(self,vLayoutEachSlave):
+        for i in range(7):
+            groupBoxSlave = QGroupBox("Slave "+str(i+1))
+            vLayoutEachSlave.addWidget(groupBoxSlave)
+            self.createEachSlave(groupBoxSlave,i)
+        pass
+    
+    def createEachSlave(self,groupBoxSlave,index):
+        # Create the FormLayout and add widgets to it
+        formLayout = QFormLayout()
+
+        # Create a QWidget to act as an intermediate container for scrolling
+        container = QWidget()
+        vLayoutDay = QVBoxLayout()
+        vLayoutDay.addLayout(formLayout)
+        container.setLayout(vLayoutDay)
+
+        # Create a QScrollArea and set the intermediate container as its widget
+        scrollAreaDay = QScrollArea()
+        scrollAreaDay.setWidgetResizable(True)
+        scrollAreaDay.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        scrollAreaDay.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        scrollAreaDay.setWidget(container)
+
+        # Set the size policy of the QScrollArea to Expanding in both directions
+        container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        container.setMinimumHeight(900)
+
+        # Add the scroll area to the inner group box
+        inner_group_box_layout = QVBoxLayout()
+        inner_group_box_layout.addWidget(scrollAreaDay)
+        groupBoxSlave.setLayout(inner_group_box_layout)
+
+        formLayout.setHorizontalSpacing(500)
+        
+        #Each Slave
+        self.createCheckBoxEach(formLayout)
+
+    def createCheckBoxEach(self,formLayout):
+        # Primary
+        labelPrimary = QLabel("Primary")
+        fieldPrimary = QWidget()
+        formLayout.addRow(labelPrimary,fieldPrimary)
+        self.createSlaveSignalFields(formLayout)
+        
+
+        # Secondary
+        labelSecondary = QLabel("Secondary")
+        fieldSecondary = QWidget()
+        formLayout.addRow(labelSecondary,fieldSecondary)
+        self.createSlaveSignalFields(formLayout)
+
+        # Overhead
+        labelOverhead = QLabel("Overhead")
+        fieldOverhead = QWidget()
+        formLayout.addRow(labelOverhead,fieldOverhead)
+        self.createSlaveSignalFields(formLayout)
+
+        # Spare
+        labelSpare = QLabel("Spare")
+        fieldSpare = QWidget()
+        formLayout.addRow(labelSpare,fieldSpare)
+        self.createSlaveSignalFields(formLayout)
+
+    def createSlaveSignalFields(self,formLayout):
+        label = QLabel("Red")
+        checkBox = QCheckBox()
+        checkBox.setText("Activate/Don't Activate")
+
+        formLayout.addRow(label,checkBox)
+        label = QLabel("Amber")
+        checkBox = QCheckBox()
+        checkBox.setText("Activate/Don't Activate")
+
+        formLayout.addRow(label,checkBox)
+        label = QLabel("Green Forward")
+        checkBox = QCheckBox()
+        checkBox.setText("Activate/Don't Activate")
+
+        formLayout.addRow(label,checkBox)
+        label = QLabel("Green Left")
+        checkBox = QCheckBox()
+        checkBox.setText("Activate/Don't Activate")
+
+        formLayout.addRow(label,checkBox)
+        label = QLabel("Green Right")
+        checkBox = QCheckBox()
+        checkBox.setText("Activate/Don't Activate")
+
+        formLayout.addRow(label,checkBox)
+
+    def scrapeSlaveTab(self):
+        self.dictScrapedActivateSlave = {}
+        for i in range(self.vLayoutActivateSlaves.count()):
+            groupBoxSlave = self.vLayoutActivateSlaves.itemAt(i).widget()
+            self.dictScrapedActivateSlave[i+1] = {}
+            formLayout = groupBoxSlave.layout().itemAt(0).widget().widget().layout().itemAt(0).layout()
+
+            labelOverall = ""
+            for row in range(formLayout.rowCount()):
+                itemLabel = formLayout.itemAt(row,QFormLayout.ItemRole.LabelRole).widget()
+                itemField = formLayout.itemAt(row,QFormLayout.ItemRole.FieldRole).widget()
+                
+                if("PrimarySecondaryOverheadSpare".find(itemLabel.text()) != -1):
+                    labelOverall = itemLabel.text()
+                    labelOverall = labelOverall.lower()
+                    self.dictScrapedActivateSlave[i+1][labelOverall] = {}
+                    print(self.dictScrapedActivateSlave)
+                else:
+                    print(itemLabel.text())
+                    print(labelOverall)
+                    if(itemLabel.text().find("Green") != -1):
+                        if(not "green" in self.dictScrapedActivateSlave[i+1][labelOverall]):
+                            self.dictScrapedActivateSlave[i+1][labelOverall]["green"] = {}
+                        itemLabelGreenParam = itemLabel.text()
+                        if(itemLabelGreenParam.find("Forward") != -1):
+                            itemLabelGreenParam = "fwd"
+                        elif(itemLabelGreenParam.find("Left") != -1):
+                            itemLabelGreenParam = "l"
+                        elif(itemLabelGreenParam.find("Right") != -1):
+                            itemLabelGreenParam = "r"
+                        self.dictScrapedActivateSlave[i+1][labelOverall]["green"][itemLabelGreenParam]=itemField.isChecked()
+                    else:
+                        self.dictScrapedActivateSlave[i+1][labelOverall][itemLabel.text().lower()]=itemField.isChecked()
+
+    def deployToBrokerActivateSlave(self):
+        if(self.scrapeSlaveTab() == -1):
+            return
+        JSONScrapedTab = json.dumps(self.dictScrapedActivateSlave)
+        print("JSON: ",JSONScrapedTab)
+
+        if(client.is_connected() != True):
+            try:
+                rc = client.connect(broker,port,60)
+                if(rc != 0):
+                    self.statusLabel.setText("Could not connect!")
+            except BaseException:
+                self.statusLabel.setText("Could not connect!")
+                client.disconnect()
+        result = client.publish("/traffic/lamp_config",JSONScrapedTab)
+        if(result.rc == mqtt.MQTT_ERR_SUCCESS):
+            self.statusLabel.setText("Deployed!")
+        else:
+            self.statusLabel.setText("Could not deploy!")
 
     def remove_all_widgets_form(self,layout):
         if layout is not None:
