@@ -62,6 +62,11 @@ class Ui_MainWindow(object):
                 data = json.loads(payload)
                 self.received_message_slave_monitoring = data
                 self.updateModel(treeModelsList["Slave Monitoring"],self.received_message_slave_monitoring,"Slave Monitoring")
+            elif(msg.topic=="/traffic/status"):
+                data = json.loads(payload)
+                self.received_message_status = data
+                self.updateModel(treeModelsList["Connection Status"],self.received_message_status,"Connection Status")
+
             print(f'Received JSON message: {data}')
         except json.JSONDecodeError:
             print(f'Received non-JSON message: {payload}')
@@ -185,11 +190,52 @@ class Ui_MainWindow(object):
 
         self.initialiseModelMonitoring(treeModelSlaveLampStatus,"Off")
 
+        #Online/offline activity
+        groupBox = QtWidgets.QGroupBox("Connection Status",self.tabSummary)
+        groupBox.setObjectName("SlaveLampStatus")
+        verticalLayout.addWidget(groupBox)
+
+        treeModel = QStandardItemModel()
+        treeView = QTreeView(groupBox)
+        # treeView.setAlternatingRowColors(True)
+        treeView.setModel(treeModel)
+        layout = QVBoxLayout()
+        layout.addWidget(treeView)
+        groupBox.setLayout(layout)
+        self.connectToMQTT()
+        columns = ["Species","Status"]
+        treeModel.setHorizontalHeaderLabels(columns)
+        for i in range(len(columns)):
+            treeView.setColumnWidth(i,int(self.centralwidget.parent().width()/len(columns)))
+
+        treeModelsList["Connection Status"]=treeModel
+
+        self.initialiseModelStatus(treeModel)
+
         pushButtonConnect = QPushButton()
         pushButtonConnect.setText("Connect to MQTT Broker")
         pushButtonConnect.clicked.connect(self.connectToMQTT)
         verticalLayout.addWidget(pushButtonConnect)
         verticalLayout.setAlignment(pushButtonConnect,Qt.AlignmentFlag.AlignHCenter)
+
+    def initialiseModelStatus(self,treeModel):
+        itemMaster = QStandardItem("Master")
+        treeModel.setItem(0,0,itemMaster)
+        itemConnection = QStandardItem("Offline")
+        treeModel.setItem(0,1,itemConnection)
+        iconStatus = QIcon("icons/icon_grey.png")
+        itemConnection.setIcon(iconStatus)
+
+        itemSlave = QStandardItem("Slave")
+        treeModel.setItem(1,0,itemSlave)
+        for i in range(1,8):
+            itemSlaveID = QStandardItem(str(i))
+            itemConnection = QStandardItem("Offline")
+            iconStatus = QIcon("icons/icon_grey.png")
+            itemConnection.setIcon(iconStatus)
+            
+            itemSlave.setChild(i-1,0,itemSlaveID)
+            itemSlave.setChild(i-1,1,itemConnection)
 
     def initialiseModelMonitoring(self,treeModel,status=""):
         for i in range(7):
@@ -204,7 +250,7 @@ class Ui_MainWindow(object):
             self.setItemsMonitoring(itemSlaveID,3,[status]*5)
             # Spare
             self.setItemsMonitoring(itemSlaveID,4,[status]*5)
-            
+
 
     def setItemsMonitoring(self,itemSlaveID,col,listStatus):
         # Red
@@ -335,6 +381,24 @@ class Ui_MainWindow(object):
                 listMonitoring.clear()
                 ind += 1
 
+        elif(model=="Connection Status"):
+            if(msg["species"]=="master"):
+                itemMaster = treeModel.item(0,1)
+                itemMaster.setText(msg["status"])
+                if(msg["status"]=="Online"):
+                    itemMaster.setIcon(QIcon("icons/icon_green.png"))
+                else:
+                    itemMaster.setIcon(QIcon("icons/icon_grey.png"))
+            else:
+                itemSlave = treeModel.item(1,0)
+                itemSlaveID = itemSlave.child(int(msg["slave_id"]),0)
+                itemSlaveStatus = itemSlave.child(int(msg["slave_id"]),1)
+                itemSlaveStatus.setText(msg["status"])
+                if(msg["status"]=="Online"):
+                    itemSlaveStatus.setIcon(QIcon("icons/icon_green.png"))
+                else:
+                    itemSlaveStatus.setIcon(QIcon("icons/icon_grey.png"))
+
     def createSetMasterTab(self,tabWidget):
         self.tabSetMaster = QtWidgets.QWidget()
         self.tabSetMaster.setObjectName("tabSetMaster")
@@ -428,7 +492,6 @@ class Ui_MainWindow(object):
             groupBoxDay.setMinimumHeight(200)
 
             self.createSlotsForDay(groupBoxDay,i)
-        
 
     def createSlotsForDay(self,groupBoxDay,indexOfDay):
 
@@ -748,7 +811,6 @@ class Ui_MainWindow(object):
             groupBoxSlave = QGroupBox("Slave "+str(i+1))
             vLayoutEachSlave.addWidget(groupBoxSlave)
             self.createEachSlave(groupBoxSlave,i)
-        pass
     
     def createEachSlave(self,groupBoxSlave,index):
         # Create the FormLayout and add widgets to it
