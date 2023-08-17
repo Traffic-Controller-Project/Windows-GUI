@@ -45,6 +45,7 @@ class Ui_MainWindow(object):
         self.received_message_master = None
         self.received_message_slave_status = None
         self.received_message_slave_monitoring = None
+        self.received_message_status = None
 
     def on_message(self,client, userdata, msg):
         payload = msg.payload.decode("utf-8")
