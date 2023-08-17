@@ -857,9 +857,9 @@ class Ui_MainWindow(object):
                             itemLabelGreenParam = "l"
                         elif(itemLabelGreenParam.find("Right") != -1):
                             itemLabelGreenParam = "r"
-                        self.dictScrapedActivateSlave[i+1][labelOverall]["green"][itemLabelGreenParam]=itemField.isChecked()
+                        self.dictScrapedActivateSlave[i+1][labelOverall]["green"][itemLabelGreenParam]=int(itemField.isChecked())
                     else:
-                        self.dictScrapedActivateSlave[i+1][labelOverall][itemLabel.text().lower()]=itemField.isChecked()
+                        self.dictScrapedActivateSlave[i+1][labelOverall][itemLabel.text().lower()]=int(itemField.isChecked())
 
     def deployToBrokerActivateSlave(self):
         if(self.scrapeSlaveTab() == -1):
