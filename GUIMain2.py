@@ -129,11 +129,125 @@ class Ui_MainWindow(object):
 
         self.initialiseModel(treeModelSlave)
 
+        #Slave State Monitoring
+        groupBox = QtWidgets.QGroupBox("Slave Monitoring",self.tabSummary)
+        groupBox.setObjectName("SlaveMonitoring")
+        verticalLayout.addWidget(groupBox)
+
+        treeModelSlaveMonitoring = QStandardItemModel()
+        treeViewSlave = QTreeView(groupBox)
+        # treeViewSlave.setAlternatingRowColors(True)
+        treeViewSlave.setModel(treeModelSlaveMonitoring)
+        layout = QVBoxLayout()
+        layout.addWidget(treeViewSlave)
+        groupBox.setLayout(layout)
+        self.connectToMQTT()
+        columns = ["Slave ID","Primary","Secondary","Overhead","Spare"]
+        treeModelSlaveMonitoring.setHorizontalHeaderLabels(columns)
+        for i in range(len(columns)):
+            treeViewSlave.setColumnWidth(i,int(self.centralwidget.parent().width()/len(columns)))
+
+        treeModelsList["Slave Monitoring"]=treeModelSlaveMonitoring
+
+        self.initialiseModelMonitoring(treeModelSlaveMonitoring)
+
+        #Slave Lamp Status
+        groupBox = QtWidgets.QGroupBox("Slave Lamp Status",self.tabSummary)
+        groupBox.setObjectName("SlaveLampStatus")
+        verticalLayout.addWidget(groupBox)
+
+        treeModelSlaveLampStatus = QStandardItemModel()
+        treeViewSlave = QTreeView(groupBox)
+        # treeViewSlave.setAlternatingRowColors(True)
+        treeViewSlave.setModel(treeModelSlaveLampStatus)
+        layout = QVBoxLayout()
+        layout.addWidget(treeViewSlave)
+        groupBox.setLayout(layout)
+        self.connectToMQTT()
+        columns = ["Slave ID","Primary","Secondary","Overhead","Spare"]
+        treeModelSlaveLampStatus.setHorizontalHeaderLabels(columns)
+        for i in range(len(columns)):
+            treeViewSlave.setColumnWidth(i,int(self.centralwidget.parent().width()/len(columns)))
+
+        treeModelsList["Slave Lamp Status"]=treeModelSlaveLampStatus
+
+        self.initialiseModelLampStatus(treeModelSlaveLampStatus)
+
         pushButtonConnect = QPushButton()
         pushButtonConnect.setText("Connect to MQTT Broker")
         pushButtonConnect.clicked.connect(self.connectToMQTT)
         verticalLayout.addWidget(pushButtonConnect)
         verticalLayout.setAlignment(pushButtonConnect,Qt.AlignmentFlag.AlignHCenter)
+
+    def initialiseModelLampStatus(self,treeModel):
+        for i in range(7):
+            itemSlaveID = QStandardItem(str(i+1))
+            treeModel.setItem(i,0,itemSlaveID)
+
+            # Primary
+            self.setItemsMonitoring(itemSlaveID,1,["Off"]*5)
+            # Secondary
+            self.setItemsMonitoring(itemSlaveID,2,["Off"]*5)
+            # Overhead
+            self.setItemsMonitoring(itemSlaveID,3,["Off"]*5)
+            # Spare
+            self.setItemsMonitoring(itemSlaveID,4,["Off"]*5)
+
+    def initialiseModelMonitoring(self,treeModel):
+        for i in range(7):
+            itemSlaveID = QStandardItem(str(i+1))
+            treeModel.setItem(i,0,itemSlaveID)
+
+            # Primary
+            self.setItemsMonitoring(itemSlaveID,1,["Healthy"]*5)
+            # Secondary
+            self.setItemsMonitoring(itemSlaveID,2,["Healthy"]*5)
+            # Overhead
+            self.setItemsMonitoring(itemSlaveID,3,["Healthy"]*5)
+            # Spare
+            self.setItemsMonitoring(itemSlaveID,4,["Healthy"]*5)
+            
+
+    def setItemsMonitoring(self,itemSlaveID,col,listStatus):
+        # Red
+        itemRedPrimary = QStandardItem(listStatus[0])
+        itemSlaveID.setChild(0,col,itemRedPrimary)
+        iconPath = self.dictSignal["red"][1]
+        signalIcon = QtGui.QIcon()
+        signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        itemRedPrimary.setIcon(signalIcon)
+
+        # Amber
+        itemAmberPrimary = QStandardItem(listStatus[1])
+        itemSlaveID.setChild(1,col,itemAmberPrimary)
+        iconPath = self.dictSignal["amber"][1]
+        signalIcon = QtGui.QIcon()
+        signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        itemAmberPrimary.setIcon(signalIcon)
+
+        # Green Forward
+        itemGFwdPrimary = QStandardItem(listStatus[2])
+        itemSlaveID.setChild(2,col,itemGFwdPrimary)
+        iconPath = self.dictSignal["green_fwd"][1]
+        signalIcon = QtGui.QIcon()
+        signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        itemGFwdPrimary.setIcon(signalIcon)
+
+        # Green Left
+        itemGLftPrimary = QStandardItem(listStatus[3])
+        itemSlaveID.setChild(3,col,itemGLftPrimary)
+        iconPath = self.dictSignal["green_left"][1]
+        signalIcon = QtGui.QIcon()
+        signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        itemGLftPrimary.setIcon(signalIcon)
+
+        # Green Right
+        itemGRgtPrimary = QStandardItem(listStatus[4])
+        itemSlaveID.setChild(4,col,itemGRgtPrimary)
+        iconPath = self.dictSignal["green_right"][1]
+        signalIcon = QtGui.QIcon()
+        signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        itemGRgtPrimary.setIcon(signalIcon)
 
     def initialiseModel(self,treeModel):
         self.dictSignal = {"off": ["Off","icons/icon_off.png"], "red": ["Red","icons/icon_red.png"], "amber": ["Amber","icons/icon_amber.png"], "green_fwd": ["Green Forward","icons/icon_greenForward.png"], "green_left": ["Green Left","icons/icon_greenLeft.png"], "green_right": ["Green Right","icons/icon_greenRight.png"]}
@@ -150,7 +264,6 @@ class Ui_MainWindow(object):
             treeModel.setItem(i,2,itemSlaveTiming)
 
     def updateModel(self,treeModel,msg):
-        pass
         # print("Slave ID: ",int(msg["slave_id"])-1)
         slave_id = int(msg["slave_id"])-1
         iconPath = self.dictSignal[msg["state"]][1]
@@ -767,6 +880,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("Traffic Controller", "Traffic Controller"))
+        MainWindow.setWindowIcon(QIcon("icons/icon_trafficWindow.png"))
 
 if __name__ == "__main__":
     import sys
@@ -786,4 +900,3 @@ if __name__ == "__main__":
     finally:
         client.loop_start()
         sys.exit(app.exec())
-
