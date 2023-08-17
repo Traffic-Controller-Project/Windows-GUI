@@ -320,7 +320,7 @@ class Ui_MainWindow(object):
             itemGRgtPrimary.setText(listStatus[4])
 
     def initialiseModel(self,treeModel):
-        self.dictSignal = {"off": ["Off","icons/icon_off.png"], "red": ["Red","icons/icon_red.png"], "amber": ["Amber","icons/icon_amber.png"], "green_fwd": ["Green Forward","icons/icon_greenForward.png"], "green_left": ["Green Left","icons/icon_greenLeft.png"], "green_right": ["Green Right","icons/icon_greenRight.png"]}
+        self.dictSignal = {"off": ["Off","icons/icon_off.png"], "red": ["Red","icons/icon_red.png"], "amber": ["Amber","icons/icon_amber.png"], "green": ["Green","icons/icon_green.png"],"green_fwd": ["Green Forward","icons/icon_greenForward.png"], "green_left": ["Green Left","icons/icon_greenLeft.png"], "green_right": ["Green Right","icons/icon_greenRight.png"]}
         for i in range(7):
             itemSlaveID = QStandardItem(str(i+1))
             itemSlaveState = QStandardItem("Off")
@@ -337,14 +337,24 @@ class Ui_MainWindow(object):
         # print("Slave ID: ",int(msg["slave_id"])-1)
         if(model=="slave"):
             slave_id = int(msg["slave_id"])-1
-            iconPath = self.dictSignal[msg["state"]][1]
-            signalIcon = QIcon()
-            signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
-            itemState = treeModel.item(slave_id,1)
-            itemState.setIcon(signalIcon)
-            itemState.setText(self.dictSignal[msg["state"]][0])
-            itemTRemaining = treeModel.item(slave_id,2)
-            itemTRemaining.setText(str(msg["t_remaining"]))
+            if(msg["state"]=="blinker"):
+                iconPath = "icons/icon_blinker.png"
+                signalIcon = QIcon()
+                signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+                itemState = treeModel.item(slave_id,1)
+                itemState.setIcon(signalIcon)
+                itemState.setText("Blinker")
+                itemTRemaining = treeModel.item(slave_id,2)
+                itemTRemaining.setText("INF")
+            else:
+                iconPath = self.dictSignal[msg["state"]][1]
+                signalIcon = QIcon()
+                signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+                itemState = treeModel.item(slave_id,1)
+                itemState.setIcon(signalIcon)
+                itemState.setText(self.dictSignal[msg["state"]][0])
+                itemTRemaining = treeModel.item(slave_id,2)
+                itemTRemaining.setText(str(msg["t_remaining"]))
         elif(model=="Slave Lamp Status"):
             slave_id = int(msg["slave_id"])-1
             itemSlaveID = treeModel.item(slave_id,0)
@@ -386,18 +396,22 @@ class Ui_MainWindow(object):
             if(msg["species"]=="master"):
                 itemMaster = treeModel.item(0,1)
                 itemMaster.setText(msg["status"])
-                if(msg["status"]=="Online"):
+                if(msg["status"]=="online"):
+                    itemMaster.setText("Online")
                     itemMaster.setIcon(QIcon("icons/icon_green.png"))
                 else:
+                    itemMaster.setText("Offline")
                     itemMaster.setIcon(QIcon("icons/icon_grey.png"))
             else:
                 itemSlave = treeModel.item(1,0)
                 itemSlaveID = itemSlave.child(int(msg["slave_id"]),0)
                 itemSlaveStatus = itemSlave.child(int(msg["slave_id"]),1)
                 itemSlaveStatus.setText(msg["status"])
-                if(msg["status"]=="Online"):
+                if(msg["status"]=="online"):
+                    itemSlaveStatus.setText("Online")
                     itemSlaveStatus.setIcon(QIcon("icons/icon_green.png"))
                 else:
+                    itemSlaveStatus.setText("Offline")
                     itemSlaveStatus.setIcon(QIcon("icons/icon_grey.png"))
 
     def createSetMasterTab(self,tabWidget):
