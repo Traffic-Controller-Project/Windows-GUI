@@ -7,3 +7,5 @@ JSONScraperDemo.py
 test.py
 configuration.json
 *.spec
+build
+dist
