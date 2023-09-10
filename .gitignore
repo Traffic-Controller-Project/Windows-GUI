@@ -6,3 +6,4 @@ screenshots
 JSONScraperDemo.py
 test.py
 configuration.json
+*.spec
