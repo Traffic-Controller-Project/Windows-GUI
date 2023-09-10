@@ -115,6 +115,7 @@ class Ui_MainWindow(object):
         self.createSummaryTab(tabWidget)
         self.createSetMasterTab(tabWidget)
         self.createActivateSlavesTab(tabWidget)
+        self.createBrightnessTab(tabWidget)
 
     def createSummaryTab(self,tabWidget):
         self.tabSummary = QtWidgets.QWidget()
@@ -375,7 +376,7 @@ class Ui_MainWindow(object):
         elif(model=="Slave Monitoring"):
             slave_id = int(msg["slave_id"])-1
             itemSlaveID = treeModel.item(slave_id,0)
-            
+
             ind = 1
             for key in msg:
                 if(key == "slave_id"):
@@ -404,8 +405,8 @@ class Ui_MainWindow(object):
                     itemMaster.setIcon(QIcon("icons/icon_grey.png"))
             else:
                 itemSlave = treeModel.item(1,0)
-                itemSlaveID = itemSlave.child(int(msg["slave_id"]),0)
-                itemSlaveStatus = itemSlave.child(int(msg["slave_id"]),1)
+                itemSlaveID = itemSlave.child(int(msg["slave_id"])-1,0)
+                itemSlaveStatus = itemSlave.child(int(msg["slave_id"])-1,1)
                 itemSlaveStatus.setText(msg["status"])
                 if(msg["status"]=="online"):
                     itemSlaveStatus.setText("Online")
@@ -493,6 +494,40 @@ class Ui_MainWindow(object):
         self.gridLayoutSetMaster.setAlignment(pushButtonDeployButton,Qt.AlignmentFlag.AlignHCenter)
 
         self.makeSlotStructure(self.vLayoutGroupBoxMaster)
+        
+    def createBrightnessTab(self,tabWidget):
+        self.tabBrightness = QWidget()
+        self.tabBrightness.setObjectName("tabBrightness")
+        
+        tabWidget.addTab(self.tabBrightness,"Set Lamp Brightness")
+        
+        vLayoutBrightness = QVBoxLayout()
+        formLayoutBrightness = QFormLayout()
+        vLayoutBrightness.addLayout(formLayoutBrightness)
+        self.tabBrightness.setLayout(vLayoutBrightness)
+        formLayoutBrightness.setHorizontalSpacing(200)
+        
+        for i in range(7):
+            labelBrightness = QLabel()
+            labelBrightness.setText("Slave "+str(i+1)+" lamp: 75 %")
+            sliderBrightness = QSlider(Qt.Orientation.Horizontal)
+            step = 1
+            sliderBrightness.setSingleStep(step)
+            sliderBrightness.setMinimum(0)
+            sliderBrightness.setMaximum(100)
+            sliderBrightness.setValue(75)
+            sliderBrightness.setTickPosition(QSlider.TickPosition.TicksAbove)
+            sliderBrightness.valueChanged.connect(lambda value,label=labelBrightness,index=i: self.updateBrightnessLabel(value,label,index))
+            formLayoutBrightness.addRow(labelBrightness,sliderBrightness)
+        
+        pushButtonDeploy = QPushButton()
+        pushButtonDeploy.setText("Deploy")
+        pushButtonDeploy.clicked.connect(self.deployBrightness)
+        vLayoutBrightness.addWidget(pushButtonDeploy)
+        vLayoutBrightness.setAlignment(pushButtonDeploy,Qt.AlignmentFlag.AlignCenter)
+            
+    def updateBrightnessLabel(self,value,label,index):
+        label.setText("Slave "+str(index+1)+" lamp: "+str(value)+" %")
         
     def makeSlotStructure(self,vLayout):
 
@@ -1224,6 +1259,31 @@ class Ui_MainWindow(object):
             self.statusLabel.setText("Deployed!")
         else:
             self.statusLabel.setText("Could not deploy!")
+            
+    def deployBrightness(self):
+        vLayout = self.tabBrightness.layout()
+        dictJSONScraped = {}
+        for i in range(vLayout.itemAt(0).layout().rowCount()):
+            slider = vLayout.itemAt(0).layout().itemAt(i,QFormLayout.ItemRole.FieldRole).widget()
+            value = slider.value()
+            
+            dictJSONScraped[i]=value
+            
+        print("dictJSONScraped: ",dictJSONScraped)
+            
+        if(client.is_connected() != True):
+            try:
+                rc = client.connect(broker,port,60)
+                if(rc != 0):
+                    self.statusLabel.setText("Could not connect!")
+            except BaseException:
+                self.statusLabel.setText("Could not connect!")
+                client.disconnect()
+        result = client.publish("/traffic/lamp_brightness",dictJSONScraped)
+        if(result.rc == mqtt.MQTT_ERR_SUCCESS):
+            self.statusLabel.setText("Deployed!")
+        else:
+            self.statusLabel.setText("Could not deploy!")
     
     def refactorDict(self,dictScrapedTab):
         for keyDay in dictScrapedTab:
@@ -1284,14 +1344,15 @@ if __name__ == "__main__":
     ui = Ui_MainWindow()
     ui.setupUi(MainWindow)
     MainWindow.show()
-    try:
-        print(client.connect(broker,port,60))
-        for topic in topics:
-            client.subscribe(topic)
-        client.on_message = ui.on_message
-    except KeyboardInterrupt:
-        print("Disconnecting...")
-        client.disconnect()
-    finally:
-        client.loop_start()
-        sys.exit(app.exec())
+    # try:
+    #     client.connect(broker,port,60)
+    #     for topic in topics:
+    #         client.subscribe(topic)
+    #     client.on_message = ui.on_message
+    # except KeyboardInterrupt:
+    #     print("Disconnecting...")
+    #     client.disconnect()
+    # finally:
+    #     client.loop_start()
+    #    sys.exit(app.exec())
+    sys.exit(app.exec())
