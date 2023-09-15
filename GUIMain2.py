@@ -46,6 +46,7 @@ class Ui_MainWindow(object):
         self.received_message_slave_status = None
         self.received_message_slave_monitoring = None
         self.received_message_status = None
+        self.slaveNames = []
 
     def on_message(self,client, userdata, msg):
         payload = msg.payload.decode("utf-8")
@@ -91,6 +92,7 @@ class Ui_MainWindow(object):
         self.statusbar.addWidget(self.statusLabel)
         MainWindow.setStatusBar(self.statusbar)
 
+        self.createPopUpSlavesName()
         self.createTabs(self.tabWidget)
 
         self.gridLayout.addWidget(self.tabWidget, 0, 0, 1, 1)
@@ -111,12 +113,27 @@ class Ui_MainWindow(object):
         self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    def createPopUpSlavesName(self):
+        
+        popup = QMessageBox()
+        popup.setWindowTitle("Set Slave Names!")
+        popup.setText("Set names for each slave junction!")
+        
+        for i in range(7):
+            field_name, ok = QInputDialog.getText(popup, 'Slave Name Input', 'Slave '+str(i+1)+' Name:')
+            
+            if ok:
+                self.slaveNames.append(field_name)
+                # print(f'Field Name Entered: {field_name}')
+        
+        print("Slave Names: ",self.slaveNames)
+        
     def createTabs(self,tabWidget):
         self.createSummaryTab(tabWidget)
         self.createSetMasterTab(tabWidget)
         self.createActivateSlavesTab(tabWidget)
         self.createBrightnessTab(tabWidget)
-
+        
     def createSummaryTab(self,tabWidget):
         self.tabSummary = QtWidgets.QWidget()
         self.tabSummary.setObjectName("tabSummary")
@@ -139,7 +156,7 @@ class Ui_MainWindow(object):
         layout.addWidget(treeViewSlave)
         groupBox.setLayout(layout)
         self.connectToMQTT()
-        columns = ["Slave ID","State","Time remaining (s)"]
+        columns = ["Slave ID","Junction Name","State","Time remaining (s)"]
         treeModelSlave.setHorizontalHeaderLabels(columns)
         for i in range(len(columns)):
             treeViewSlave.setColumnWidth(i,int(self.centralwidget.parent().width()/len(columns)))
@@ -161,7 +178,7 @@ class Ui_MainWindow(object):
         layout.addWidget(treeViewSlave)
         groupBox.setLayout(layout)
         self.connectToMQTT()
-        columns = ["Slave ID","Primary","Secondary","Overhead","Spare"]
+        columns = ["Slave ID","Junction Name","Primary","Secondary","Overhead","Spare"]
         treeModelSlaveMonitoring.setHorizontalHeaderLabels(columns)
         for i in range(len(columns)):
             treeViewSlave.setColumnWidth(i,int(self.centralwidget.parent().width()/len(columns)))
@@ -183,7 +200,7 @@ class Ui_MainWindow(object):
         layout.addWidget(treeViewSlave)
         groupBox.setLayout(layout)
         self.connectToMQTT()
-        columns = ["Slave ID","Primary","Secondary","Overhead","Spare"]
+        columns = ["Slave ID","Junction Name","Primary","Secondary","Overhead","Spare"]
         treeModelSlaveLampStatus.setHorizontalHeaderLabels(columns)
         for i in range(len(columns)):
             treeViewSlave.setColumnWidth(i,int(self.centralwidget.parent().width()/len(columns)))
@@ -205,7 +222,7 @@ class Ui_MainWindow(object):
         layout.addWidget(treeView)
         groupBox.setLayout(layout)
         self.connectToMQTT()
-        columns = ["Species","Status"]
+        columns = ["Species","Junction Name","Status"]
         treeModel.setHorizontalHeaderLabels(columns)
         for i in range(len(columns)):
             treeView.setColumnWidth(i,int(self.centralwidget.parent().width()/len(columns)))
@@ -224,7 +241,7 @@ class Ui_MainWindow(object):
         itemMaster = QStandardItem("Master")
         treeModel.setItem(0,0,itemMaster)
         itemConnection = QStandardItem("Offline")
-        treeModel.setItem(0,1,itemConnection)
+        treeModel.setItem(0,2,itemConnection)
         iconStatus = QIcon("icons/icon_grey.png")
         itemConnection.setIcon(iconStatus)
 
@@ -235,24 +252,32 @@ class Ui_MainWindow(object):
             itemConnection = QStandardItem("Offline")
             iconStatus = QIcon("icons/icon_grey.png")
             itemConnection.setIcon(iconStatus)
+            itemJunctionName = QStandardItem(str(i))
+            if(self.slaveNames[i-1]!=''):
+                itemJunctionName.setText(self.slaveNames[i-1])
             
             itemSlave.setChild(i-1,0,itemSlaveID)
-            itemSlave.setChild(i-1,1,itemConnection)
+            itemSlave.setChild(i-1,1,itemJunctionName)
+            itemSlave.setChild(i-1,2,itemConnection)
 
     def initialiseModelMonitoring(self,treeModel,status=""):
         for i in range(7):
             itemSlaveID = QStandardItem(str(i+1))
             treeModel.setItem(i,0,itemSlaveID)
+            
+            itemJunctionName = QStandardItem(str(i+1))
+            if(self.slaveNames[i] != ''):
+                itemJunctionName.setText(self.slaveNames[i])
+            treeModel.setItem(i,1,itemJunctionName)
 
             # Primary
-            self.setItemsMonitoring(itemSlaveID,1,[status]*5)
-            # Secondary
             self.setItemsMonitoring(itemSlaveID,2,[status]*5)
-            # Overhead
+            # Secondary
             self.setItemsMonitoring(itemSlaveID,3,[status]*5)
-            # Spare
+            # Overhead
             self.setItemsMonitoring(itemSlaveID,4,[status]*5)
-
+            # Spare
+            self.setItemsMonitoring(itemSlaveID,5,[status]*5)
 
     def setItemsMonitoring(self,itemSlaveID,col,listStatus):
         # Red
@@ -324,15 +349,19 @@ class Ui_MainWindow(object):
         self.dictSignal = {"off": ["Off","icons/icon_off.png"], "red": ["Red","icons/icon_red.png"], "amber": ["Amber","icons/icon_amber.png"], "green": ["Green","icons/icon_green.png"],"green_fwd": ["Green Forward","icons/icon_greenForward.png"], "green_left": ["Green Left","icons/icon_greenLeft.png"], "green_right": ["Green Right","icons/icon_greenRight.png"]}
         for i in range(7):
             itemSlaveID = QStandardItem(str(i+1))
+            itemJuncionName = QStandardItem(str(i+1))
+            if(self.slaveNames[i] != ''):
+                itemJuncionName.setText(self.slaveNames[i])
             itemSlaveState = QStandardItem("Off")
             itemSlaveTiming = QStandardItem("INF")
             iconPath = self.dictSignal["off"][1]
             signalIcon = QtGui.QIcon()
             signalIcon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
             treeModel.setItem(i,0,itemSlaveID)
-            treeModel.setItem(i,1,itemSlaveState)
+            treeModel.setItem(i,1,itemJuncionName)
+            treeModel.setItem(i,2,itemSlaveState)
             itemSlaveState.setIcon(signalIcon)
-            treeModel.setItem(i,2,itemSlaveTiming)
+            treeModel.setItem(i,3,itemSlaveTiming)
 
     def updateModel(self,treeModel,msg,model):
         # print("Slave ID: ",int(msg["slave_id"])-1)
@@ -509,7 +538,10 @@ class Ui_MainWindow(object):
         
         for i in range(7):
             labelBrightness = QLabel()
-            labelBrightness.setText("Slave "+str(i+1)+" lamp: 75 %")
+            if(self.slaveNames[i] == ''):
+                labelBrightness.setText("Slave "+str(i+1)+" lamp: 75 %")
+            else:
+                labelBrightness.setText("Slave "+self.slaveNames[i]+" lamp: 75 %")
             sliderBrightness = QSlider(Qt.Orientation.Horizontal)
             step = 1
             sliderBrightness.setSingleStep(step)
@@ -527,7 +559,11 @@ class Ui_MainWindow(object):
         vLayoutBrightness.setAlignment(pushButtonDeploy,Qt.AlignmentFlag.AlignCenter)
             
     def updateBrightnessLabel(self,value,label,index):
-        label.setText("Slave "+str(index+1)+" lamp: "+str(value)+" %")
+        if(self.slaveNames[index] == ''):
+            label.setText("Slave "+str(index+1)+" lamp: "+str(value)+" %")
+        else:
+            label.setText("Slave "+self.slaveNames[index]+" lamp: "+str(value)+" %")
+            
         
     def makeSlotStructure(self,vLayout):
 
@@ -680,7 +716,10 @@ class Ui_MainWindow(object):
         widgetSlaveEnableKey.setLayout(formLayoutSlaveEnable)
 
         for i in range(7):
-            labelSlaveEnable = QLabel("Slave "+str(i+1))
+            if(self.slaveNames[i] == ''):
+                labelSlaveEnable = QLabel("Slave "+str(i+1))
+            else:
+                labelSlaveEnable = QLabel("Slave "+self.slaveNames[i])
             labelSlaveEnableField = QCheckBox("On/Off")
             formLayoutSlaveEnable.addRow(labelSlaveEnable,labelSlaveEnableField)
 
@@ -858,7 +897,10 @@ class Ui_MainWindow(object):
 
     def addEachSlaveStructure(self,vLayoutEachSlave):
         for i in range(7):
-            groupBoxSlave = QGroupBox("Slave "+str(i+1))
+            if(self.slaveNames[i] == ''):
+                groupBoxSlave = QGroupBox("Slave "+str(i+1))
+            else:
+                groupBoxSlave = QGroupBox("Slave "+self.slaveNames[i])
             vLayoutEachSlave.addWidget(groupBoxSlave)
             self.createEachSlave(groupBoxSlave,i)
     
@@ -1132,7 +1174,7 @@ class Ui_MainWindow(object):
             field = layoutSlaveEnable.itemAt(i,QFormLayout.ItemRole.FieldRole).widget().isChecked()
             print("label: ",label)
             print("field: ",field)
-            label = int(label.replace("Slave ",""))-1
+            label = i
             dictScrape["slave_enables"][label]=0 if field == False else 1
 
     def scrapeEachTimeSlot(self,formLayout,dictScrape):
