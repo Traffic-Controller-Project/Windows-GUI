@@ -1,0 +1,69 @@
+import paho.mqtt.client as mqtt
+import keyboard
+import json
+from numpy.random import randint
+
+# MQTT broker details
+data = None
+topic = "/traffic/master_feedback"
+broker = "traffic-controller.cloud.shiftr.io"
+port = 1883
+username = "traffic-controller"
+password = "sZG1eCQPPOS7nmBg"
+client_id = "masterTest"
+
+# Callback functions
+def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+        print("Connected to MQTT broker")
+    else:
+        print("Failed to connect, return code: " + str(rc))
+
+def on_publish(client, userdata, mid):
+    print("Message published")
+
+def on_subscribe(client, userdata, mid, granted_qos):
+    print("Subscribed to topic")
+
+# Create MQTT client and set callbacks
+client = mqtt.Client(client_id)
+client.username_pw_set(username, password)
+client.on_connect = on_connect
+client.on_publish = on_publish
+client.on_subscribe = on_subscribe
+
+def on_key_press(event):
+    if event.event_type == keyboard.KEY_DOWN:
+        higherState = randint(0,2)
+        lowerState = randint(0,4)
+        message = {
+            "n_states": higherState,
+            "master_state": lowerState,
+            "timers":{
+                "t0":20,
+                "t1":10,
+                "t2":40,
+                "t3":60,
+                "t4":40
+            } 
+        }
+        json_message = json.dumps(message)
+        print(json_message)
+        client.publish(topic, json_message)
+
+# Connect to MQTT broker
+client.connect(broker, port, 60)
+
+# Start the network loop
+client.loop_start()
+
+keyboard.on_press(on_key_press)
+
+# Wait for KeyboardInterrupt to stop the script
+try:
+    while True:
+        pass
+except KeyboardInterrupt:
+    print("Disconnecting...")
+    client.loop_stop()
+    client.disconnect()
