@@ -1313,6 +1313,7 @@ class Ui_MainWindow(object):
             
         print("dictJSONScraped: ",dictJSONScraped)
             
+        dictJSONScraped = json.dumps(dictJSONScraped)
         if(client.is_connected() != True):
             try:
                 rc = client.connect(broker,port,60)
@@ -1386,15 +1387,15 @@ if __name__ == "__main__":
     ui = Ui_MainWindow()
     ui.setupUi(MainWindow)
     MainWindow.show()
-    # try:
-    #     client.connect(broker,port,60)
-    #     for topic in topics:
-    #         client.subscribe(topic)
-    #     client.on_message = ui.on_message
-    # except KeyboardInterrupt:
-    #     print("Disconnecting...")
-    #     client.disconnect()
-    # finally:
-    #     client.loop_start()
-    #    sys.exit(app.exec())
-    sys.exit(app.exec())
+    try:
+        client.connect(broker,port,60)
+        for topic in topics:
+            client.subscribe(topic)
+        client.on_message = ui.on_message
+    except KeyboardInterrupt:
+        print("Disconnecting...")
+        client.disconnect()
+    finally:
+        client.loop_start()
+        sys.exit(app.exec())
+    # sys.exit(app.exec())
