@@ -1129,6 +1129,10 @@ class Ui_MainWindow(object):
         for i in range(layoutParams.rowCount()):
             labelParams = layoutParams.itemAt(i,QFormLayout.ItemRole.LabelRole).widget().text()
             fieldParams = layoutParams.itemAt(i,QFormLayout.ItemRole.FieldRole).widget().text()
+            if(is_convertible_to_int(fieldParams)):
+                fieldParams = int(fieldParams)
+            if(fieldParams == ""):
+                fieldParams = 0
             # print("i: ",i)
             # print("label: ",labelParams)
             # print("field: ",fieldParams)
@@ -1148,6 +1152,10 @@ class Ui_MainWindow(object):
         #Pedestrian Timer
         label = formLayout.itemAt(7,QFormLayout.ItemRole.LabelRole).widget().text()
         field = formLayout.itemAt(7,QFormLayout.ItemRole.FieldRole).widget().text()
+        if(is_convertible_to_int(field)):
+            field = int(field)
+        if(field == ""):
+            field = 0
         # print("label: ",label)
         # print("field: ",field)
         dictScrape["ped_timer"]=field
@@ -1162,6 +1170,10 @@ class Ui_MainWindow(object):
         #Red Ext Timer
         label = formLayout.itemAt(9,QFormLayout.ItemRole.LabelRole).widget().text()
         field = formLayout.itemAt(9,QFormLayout.ItemRole.FieldRole).widget().text()
+        if(is_convertible_to_int(field)):
+            field = int(field)
+        if(field == ""):
+            field = 0
         # print("label: ",label)
         # print("field: ",field)
         dictScrape["r_ext_timer"]=field
@@ -1172,8 +1184,6 @@ class Ui_MainWindow(object):
         for i in range(layoutSlaveEnable.rowCount()):
             label = layoutSlaveEnable.itemAt(i,QFormLayout.ItemRole.LabelRole).widget().text()
             field = layoutSlaveEnable.itemAt(i,QFormLayout.ItemRole.FieldRole).widget().isChecked()
-            print("label: ",label)
-            print("field: ",field)
             label = i
             dictScrape["slave_enables"][label]=0 if field == False else 1
 
@@ -1191,6 +1201,10 @@ class Ui_MainWindow(object):
         dictScrape[label]={}
         for i in range(0,field.layout().count(),2):
             itemText = field.layout().itemAt(i).widget().text()
+            if(is_convertible_to_int(itemText)):
+                itemText = int(itemText)
+            if(itemText == ""):
+                itemText = 0
             itemLabel = field.layout().itemAt(i+1).widget().text()
             dictScrape[label][itemLabel]=itemText
 
@@ -1335,14 +1349,14 @@ class Ui_MainWindow(object):
                 dictScrapedTab[keyDay][keySlot]["env"]["params"] = {}
                 dictScrapedTab[keyDay][keySlot]["env"]["mode"] = 2
                 dictScrapedTab[keyDay][keySlot]["env"]["params"]["f"]=0.5
-    
+
     def deployToBrokerBlink(self):
         if(self.scrapeMasterTab() == -1):
             return
         self.refactorDict(self.dictScrapedTab)
         JSONScrapedTab = json.dumps(self.dictScrapedTab)
         print("JSON: ",JSONScrapedTab)
-        
+
 
         if(client.is_connected() != True):
             try:
@@ -1357,7 +1371,7 @@ class Ui_MainWindow(object):
             self.statusLabel.setText("Deployed!")
         else:
             self.statusLabel.setText("Could not deploy!")
-    
+
     def connectToMQTT(self):
         # Call a method to update the status bar message
         if(client.is_connected() != True):

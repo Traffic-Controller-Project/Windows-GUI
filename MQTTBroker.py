@@ -8,7 +8,7 @@ topics = ["/traffic/slave_feedback","/traffic/master_feedback","/traffic/monitor
 # port = 1883
 # username = "traffic-controller"
 # password = "sZG1eCQPPOS7nmBg"
-broker = "raspberrypi"
+broker = "192.168.0.104"
 port = 1883
 username = "raspi_broker"
 password = "12345678"
@@ -29,7 +29,7 @@ def on_subscribe(client, userdata, mid, granted_qos):
 
 # Create MQTT client and set callbacks
 client = mqtt.Client(client_id)
-client.username_pw_set(username, password)
+# client.username_pw_set(username, password)
 client.on_connect = on_connect
 client.on_publish = on_publish
 client.on_subscribe = on_subscribe
