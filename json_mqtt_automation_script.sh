@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 
 # Check if the required environment variables are set
 if [ -z "$MQTT_BROKER_IP" ] || [ -z "$MQTT_BROKER_PORT" ]; then
