@@ -6,4 +6,5 @@
 
 2. Run `./json_mqtt_automation_script.sh <path/to/your/json/file>.json <your_mqtt_topic>`.
 3. Press spacebar to automate mqtt deployment.
-[Happy mqtt-ing! ;)]
+
+**[Happy mqtt-ing! ;)]**
