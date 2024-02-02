@@ -3,8 +3,10 @@
 
              export MQTT_BROKER_IP="your_mqtt_broker_ip"
              export MQTT_BROKER_PORT="your_mqtt_broker_port"
+             export MQTT_USERNAME="your_username"
+             export MQTT_PASSWORD="your_password"
 
-2. Run `./json_mqtt_automation_script.sh <path/to/your/json/file>.json <your_mqtt_topic>`.
-3. Press spacebar to automate mqtt deployment.
+3. Run `./json_mqtt_automation_script.sh <path/to/your/json/file>.json <your_mqtt_topic> <client_id>`.
+4. Press spacebar to automate mqtt deployment.
 
 **[Happy mqtt-ing! ;)]**
